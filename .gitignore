@@ -19,3 +19,6 @@ hs_err_pid*
 .gradle/
 .idea/
 dependency-reduced-pom.xml
+/bin/
+config.json
+/avatars/
