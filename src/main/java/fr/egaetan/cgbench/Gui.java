@@ -60,7 +60,6 @@ public class Gui {
 			LOG.debug("GUI builded");
 		});
 		
-		
 		gui.load("./config.json");
 	}
 	
@@ -69,8 +68,6 @@ public class Gui {
 		OkHttpClient client = new OkHttpClient.Builder().readTimeout(600, TimeUnit.SECONDS).build();
 		Retrofit retrofit = new Retrofit.Builder().client(client).baseUrl(Constants.CG_HOST).addConverterFactory(GsonConverterFactory.create()).build();
 		leaderboardApi = retrofit.create(LeaderboardApi.class);
-		 
-		
 	}
 	
 	private void load(String string) {
@@ -138,22 +135,17 @@ public class Gui {
 
 	private static void setLAF() {
 		try {
-            // Set System L&F
-        UIManager.setLookAndFeel(
-            UIManager.getSystemLookAndFeelClassName());
-    } 
-    catch (UnsupportedLookAndFeelException e) {
-       // handle exception
-    }
-    catch (ClassNotFoundException e) {
-       // handle exception
-    }
-    catch (InstantiationException e) {
-       // handle exception
-    }
-    catch (IllegalAccessException e) {
-       // handle exception
-    }
-		
+			// Set System L&F
+			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+		} catch (UnsupportedLookAndFeelException e) {
+			// handle exception
+		} catch (ClassNotFoundException e) {
+			// handle exception
+		} catch (InstantiationException e) {
+			// handle exception
+		} catch (IllegalAccessException e) {
+			// handle exception
+		}
+
 	}
 }

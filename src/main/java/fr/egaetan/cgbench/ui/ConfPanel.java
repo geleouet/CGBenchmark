@@ -182,6 +182,7 @@ public class ConfPanel {
 		return new JScrollPane(ennemiesPane);
 	}
 
+	@SuppressWarnings("serial")
 	public JScrollPane seedPanel() {
 		JPanel seedsPane = new JPanel(new GridBagLayout());
 
@@ -444,6 +445,7 @@ public class ConfPanel {
 		batchRun.launch(config());
 	}
 
+	@SuppressWarnings("serial")
 	void updateCodesConfig(JTabbedPane codesTabbed) {
 		codesTabbed.removeAll();
 		for (int code_i = 0; code_i < code_configs.size(); code_i++) {
