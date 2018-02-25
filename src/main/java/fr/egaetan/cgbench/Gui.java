@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JSplitPane;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -27,9 +28,12 @@ import com.google.gson.stream.JsonReader;
 import fr.egaetan.cgbench.api.LeaderboardApi;
 import fr.egaetan.cgbench.model.config.MultisConfig;
 import fr.egaetan.cgbench.services.SearchAgentId;
+import fr.egaetan.cgbench.ui.BatchRun;
 import fr.egaetan.cgbench.ui.ConfPanel;
 import fr.egaetan.cgbench.ui.LeaderBoardPane;
+import fr.svivien.cgbenchmark.CGBenchmark;
 import fr.svivien.cgbenchmark.Constants;
+import fr.svivien.cgbenchmark.model.config.GlobalConfiguration;
 import okhttp3.OkHttpClient;
 import retrofit2.GsonConverterFactory;
 import retrofit2.Retrofit;
@@ -82,7 +86,22 @@ public class Gui {
 		JFrame mainFrame = new JFrame("CGBenchmark");
 		mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
-		confPane = new ConfPanel(multisConfig, new SearchAgentId(leaderboardApi));
+		BatchRun runBatch = new BatchRun() {
+			
+			@Override
+			public void launch(GlobalConfiguration config) {
+				try {
+					config.checkConfiguration();
+				} catch (IllegalArgumentException e) {
+					LOG.error("Illegal config", e);
+					JOptionPane.showMessageDialog(mainFrame, e.getMessage(), "Illegal configuration", JOptionPane.ERROR_MESSAGE);
+					return;
+				}
+				CGBenchmark bench = new CGBenchmark(config);
+				new Thread(() -> bench.launch(), "Batch-Run").start();
+			}
+		};
+		confPane = new ConfPanel(multisConfig, new SearchAgentId(leaderboardApi), runBatch);
 		confPane.buildConfPane();
 		
 		leaderboardPane = new LeaderBoardPane(confPane.gameConfig(), confPane.ennemiesLink(), leaderboardApi);

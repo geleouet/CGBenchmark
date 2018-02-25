@@ -4,7 +4,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
@@ -26,7 +25,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
@@ -63,23 +61,19 @@ public class CGBenchmark {
     private EnemyConfiguration me = new EnemyConfiguration(-1, "[ME]");
     private AtomicBoolean pause = new AtomicBoolean(false);
 
-    public CGBenchmark(String cfgFilePath) {
-        // Parsing configuration file
-        try {
-            globalConfiguration = parseConfigurationFile(cfgFilePath);
-            checkConfiguration(globalConfiguration);
-            
-            System.out.println(new GsonBuilder().create().toJson(globalConfiguration));
-        } catch (UnsupportedEncodingException | FileNotFoundException | JsonIOException | JsonSyntaxException e) {
-            LOG.fatal("Failed to parse configuration file", e);
-            System.exit(1);
-        } catch (IllegalArgumentException e) {
-            LOG.fatal("Configuration is invalid", e);
-            System.exit(1);
-        }
 
-        // Creating account consumers
-        LOG.info("Registering " + globalConfiguration.getAccountConfigurationList().size() + " account(s)");
+    public CGBenchmark(String cfgFilePath) {
+        this(readConfigurationFile(cfgFilePath));
+    }
+
+    public CGBenchmark(GlobalConfiguration globalConfiguration) {
+    	this.globalConfiguration = globalConfiguration;
+    	
+    	createAccountConsumers();
+	}
+    
+	private void createAccountConsumers() {
+		LOG.info("Registering " + globalConfiguration.getAccountConfigurationList().size() + " account(s)");
         for (AccountConfiguration accountCfg : globalConfiguration.getAccountConfigurationList()) {
             try {
                 retrieveAccountCookieAndSession(accountCfg, globalConfiguration.getMultiName());
@@ -90,7 +84,22 @@ public class CGBenchmark {
             accountConsumerList.add(new Consumer(accountCfg.getAccountName(), testBroker, accountCfg.getAccountCookie(), accountCfg.getAccountIde(), globalConfiguration.getRequestCooldown(), pause));
             LOG.info("Account " + accountCfg.getAccountName() + " successfully registered");
         }
-    }
+	}
+
+	static GlobalConfiguration readConfigurationFile(String cfgFilePath) {
+		try {
+			GlobalConfiguration globalConfiguration = parseConfigurationFile(cfgFilePath);
+            globalConfiguration.checkConfiguration();
+            return globalConfiguration;
+        } catch (UnsupportedEncodingException | FileNotFoundException | JsonIOException | JsonSyntaxException e) {
+            LOG.fatal("Failed to parse configuration file", e);
+            System.exit(1);
+        } catch (IllegalArgumentException e) {
+            LOG.fatal("Configuration is invalid", e);
+            System.exit(1);
+        }
+		return null;
+	}
 
     public void launch() {
         // Launching tests
@@ -270,51 +279,7 @@ public class CGBenchmark {
         }
     }
 
-    private void checkConfiguration(GlobalConfiguration globalConfiguration) throws IllegalArgumentException {
-        // Checks if every code file exists
-        for (CodeConfiguration codeCfg : globalConfiguration.getCodeConfigurationList()) {
-            if (!Files.isReadable(Paths.get(codeCfg.getSourcePath()))) {
-                throw new IllegalArgumentException("Cannot read " + codeCfg.getSourcePath());
-            }
-        }
-
-        // Checks write permission for final reports
-        if (!Files.isWritable(Paths.get(""))) {
-            throw new IllegalArgumentException("Cannot write in current directory");
-        }
-
-        // Checks account number
-        if (globalConfiguration.getAccountConfigurationList().isEmpty()) {
-            throw new IllegalArgumentException("You must provide at least one valid account");
-        }
-
-        // Checks that no account field is missing
-        for (AccountConfiguration accountCfg : globalConfiguration.getAccountConfigurationList()) {
-            if (accountCfg.getAccountName() == null) {
-                throw new IllegalArgumentException("You must provide account name");
-            }
-            if (accountCfg.getAccountLogin() == null || accountCfg.getAccountPassword() == null) {
-                throw new IllegalArgumentException("You must provide account login/pwd");
-            }
-        }
-
-        // Checks that there are seeds to test
-        if (!globalConfiguration.getRandomSeed() && globalConfiguration.getSeedList().isEmpty()) {
-            throw new IllegalArgumentException("You must provide some seeds or enable randomSeed");
-        }
-
-        // Checks that there is a fixed seed list when playing with every starting position configuration
-        if (globalConfiguration.getRandomSeed() && globalConfiguration.isEveryPositionConfiguration()) {
-            throw new IllegalArgumentException("Playing each seed with swapped positions requires fixed seed list");
-        }
-
-        // Checks player position
-        if (globalConfiguration.getPlayerPosition() == null || globalConfiguration.getPlayerPosition() < -2 || globalConfiguration.getPlayerPosition() > 3) {
-            throw new IllegalArgumentException("You must provide a valid player position (-1, 0 or 1)");
-        }
-    }
-
-    private GlobalConfiguration parseConfigurationFile(String cfgFilePath) throws UnsupportedEncodingException, FileNotFoundException {
+    private static GlobalConfiguration parseConfigurationFile(String cfgFilePath) throws UnsupportedEncodingException, FileNotFoundException {
         LOG.info("Loading configuration file : " + cfgFilePath);
         Gson gson = new Gson();
         FileInputStream configFileInputStream = new FileInputStream(cfgFilePath);

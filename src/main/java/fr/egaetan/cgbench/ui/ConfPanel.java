@@ -12,7 +12,6 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
@@ -53,7 +52,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
@@ -74,7 +72,7 @@ public class ConfPanel {
 	private static final Log LOG = LogFactory.getLog(Gui.class);
 	final MultisConfig multisConfig;
 
-	private JPanel configPanel;
+	public JPanel configPanel;
 
 	private JTextField accountName;
 	private JTextField email;
@@ -99,10 +97,12 @@ public class ConfPanel {
 	private SearchAgentId searchAgentId;
 	private List<CodeConfiguration> code_configs = new ArrayList<>();
 	private JTabbedPane codesTabbed;
+	private BatchRun batchRun;
 
-	public ConfPanel(MultisConfig multisConfig, SearchAgentId searchAgentId) {
+	public ConfPanel(MultisConfig multisConfig, SearchAgentId searchAgentId, BatchRun batchRun) {
 		this.multisConfig = multisConfig;
 		this.searchAgentId = searchAgentId;
+		this.batchRun = batchRun;
 		code_configs.add(new CodeConfiguration());
 	}
 
@@ -288,12 +288,6 @@ public class ConfPanel {
 		password = new JPasswordField(10);
 		accountConfig.add(password, new GridBagConstraints(1, 2, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.BOTH, new Insets(05, 05, 0, 05), 0, 0));
 
-		// JButton login = new JButton("Login");
-		// accountConfig.add(login, new GridBagConstraints(0, 3, 2, 1, 10., 1,
-		// GridBagConstraints.CENTER, GridBagConstraints.NONE, new Insets(05,05,0,05),
-		// 0, 0));
-		//
-
 		TitledBorder border = new TitledBorder("Account");
 		border.setTitleJustification(TitledBorder.LEFT);
 		border.setTitlePosition(TitledBorder.TOP);
@@ -403,7 +397,7 @@ public class ConfPanel {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-
+				batchRun();
 			}
 		});
 		runPane.add(new JLabel(""), new GridBagConstraints(0, 0, 1, 1, 1, 10, GridBagConstraints.SOUTH, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
@@ -446,14 +440,28 @@ public class ConfPanel {
 		configPanel.add(configPane, new GridBagConstraints(0, 1, 1, 1, 1., 1, GridBagConstraints.NORTHWEST, GridBagConstraints.BOTH, new Insets(05, 05, 0, 05), 0, 0));
 	}
 
+	protected void batchRun() {
+		batchRun.launch(config());
+	}
+
 	void updateCodesConfig(JTabbedPane codesTabbed) {
 		codesTabbed.removeAll();
 		for (int code_i = 0; code_i < code_configs.size(); code_i++) {
 
 			JPanel codeConfig = new JPanel(new GridBagLayout());
 
+			int code_tab$ = code_i;
+			codeConfig.add(new JButton(new AbstractAction("Delete code config") {
+				
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					code_configs.remove(code_tab$);
+					updateCodesConfig(codesTabbed);
+				}
+			}), new GridBagConstraints(0, 0, 2, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
+			
 			JTextField path = new JTextField();
-			codeConfig.add(new JLabel("Path:"), new GridBagConstraints(0, 0, 1, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
+			codeConfig.add(new JLabel("Path:"), new GridBagConstraints(0, 1, 1, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
 			JPanel codePath = new JPanel(new GridBagLayout());
 			codePath.add(path, new GridBagConstraints(0, 0, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.BOTH, new Insets(05, 05, 0, 05), 0, 0));
 			JButton openDirectory = new JButton(new AbstractAction("..") {
@@ -470,11 +478,11 @@ public class ConfPanel {
 			});
 			codePath.add(path, new GridBagConstraints(0, 0, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
 			codePath.add(openDirectory, new GridBagConstraints(1, 0, 1, 1, 0., 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(0, 0, 0, 0), 0, 0));
-			codeConfig.add(codePath, new GridBagConstraints(1, 0, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.BOTH, new Insets(05, 05, 0, 05), 0, 0));
+			codeConfig.add(codePath, new GridBagConstraints(1, 1, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.BOTH, new Insets(05, 05, 0, 05), 0, 0));
 
 			JTextField language = new JTextField();
-			codeConfig.add(new JLabel("Language:"), new GridBagConstraints(0, 1, 1, 1, 0., 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
-			codeConfig.add(language, new GridBagConstraints(1, 1, 1, 1, 0., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(05, 05, 0, 05), 0, 0));
+			codeConfig.add(new JLabel("Language:"), new GridBagConstraints(0, 2, 1, 1, 0., 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
+			codeConfig.add(language, new GridBagConstraints(1, 2, 1, 1, 0., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(05, 05, 0, 05), 0, 0));
 
 			JFormattedTextField nbReplays = new JFormattedTextField(new DecimalFormat());
 			nbReplays.setInputVerifier(new InputVerifier() {
@@ -497,8 +505,8 @@ public class ConfPanel {
 					}
 				}
 			});
-			codeConfig.add(new JLabel("Nb. replays:"), new GridBagConstraints(0, 2, 1, 1, 0., 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
-			codeConfig.add(nbReplays, new GridBagConstraints(1, 2, 1, 1, 0., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(05, 05, 0, 05), 0, 0));
+			codeConfig.add(new JLabel("Nb. replays:"), new GridBagConstraints(0, 3, 1, 1, 0., 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
+			codeConfig.add(nbReplays, new GridBagConstraints(1, 3, 1, 1, 0., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(05, 05, 0, 05), 0, 0));
 			codeConfig.setBorder(BorderFactory.createTitledBorder("Code"));
 
 			JPanel ennemiesConfig = new JPanel(new GridBagLayout());
@@ -519,14 +527,14 @@ public class ConfPanel {
 
 			ennemiesConfig.setBorder(BorderFactory.createTitledBorder("Enemies"));
 
-			codeConfig.add(ennemiesConfig, new GridBagConstraints(0, 3, 2, 1, 0., 1, GridBagConstraints.WEST, GridBagConstraints.BOTH, new Insets(01, 01, 0, 01), 0, 0));
-
+			codeConfig.add(ennemiesConfig, new GridBagConstraints(0, 4, 2, 1, 0., 1, GridBagConstraints.WEST, GridBagConstraints.BOTH, new Insets(01, 01, 0, 01), 0, 0));
 			
 			CodeConfiguration codeConfiguration = code_configs.get(code_i);
 			
 			path.setText(codeConfiguration.getSourcePath());
 			language.setText(codeConfiguration.getLanguage());
 			nbReplays.setValue(codeConfiguration.getNbReplays());
+			updateEnnemies[code_i].run();
 
 			path.addActionListener(new ActionListener() {
 				
@@ -557,6 +565,7 @@ public class ConfPanel {
 			public void stateChanged(ChangeEvent e) {
 				if (codesTabbed.getSelectedIndex() == codesTabbed.getTabCount() - 1 && codesTabbed.getTabCount() > 1) {
 					code_configs.add(new CodeConfiguration());
+					updateCodesConfig(codesTabbed);
 				}
 			}
 		});
@@ -591,6 +600,15 @@ public class ConfPanel {
 	}
 
 	public void saveConfig(String fileName) {
+		try {
+			config().writeConfig(fileName);
+		} catch (IOException e) {
+			LOG.error("Unable to save", e);
+			JOptionPane.showMessageDialog(configPanel, "Unable to save config", "Save", JOptionPane.ERROR_MESSAGE);
+		}
+	}
+
+	GlobalConfiguration config() {
 		GlobalConfiguration config = new GlobalConfiguration();
 		config.setAccountConfigurationList(new ArrayList<>());
 		config.setCodeConfigurationList(code_configs);
@@ -612,15 +630,7 @@ public class ConfPanel {
 		for (String seed : seedsOrigine) {
 			config.getSeedList().add(seed);
 		}
-
-		String json = new GsonBuilder().create().toJson(config);
-		try (FileWriter fw = new FileWriter(fileName)) {
-			fw.write(json);
-			fw.flush();
-		} catch (IOException e) {
-			LOG.error("Unable to save", e);
-			JOptionPane.showMessageDialog(configPanel, "Unable to save config", "Save", JOptionPane.ERROR_MESSAGE);
-		}
+		return config;
 	}
 
 	public GlobalConfiguration readConfig(String filePath) {

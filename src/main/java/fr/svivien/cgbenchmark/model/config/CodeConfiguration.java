@@ -1,5 +1,6 @@
 package fr.svivien.cgbenchmark.model.config;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class CodeConfiguration {
@@ -7,7 +8,7 @@ public class CodeConfiguration {
 	private String sourcePath;
 	private Integer nbReplays;
 	private String language;
-	private List<EnemyConfiguration> enemies;
+	private List<EnemyConfiguration> enemies = new ArrayList<>();
 
 	public void setSourcePath(String sourcePath) {
 		this.sourcePath = sourcePath;
