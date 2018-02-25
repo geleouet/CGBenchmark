@@ -22,4 +22,12 @@ public class EnemyConfiguration {
         return name;
     }
 
+	public void setAgentId(Integer agentId) {
+		this.agentId = agentId;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
 }

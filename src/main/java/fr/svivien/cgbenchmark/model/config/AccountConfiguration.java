@@ -2,11 +2,24 @@ package fr.svivien.cgbenchmark.model.config;
 
 public class AccountConfiguration {
 
-    private String accountName;
-    private String accountCookie;
-    private String accountIde;
-    private String accountLogin;
-    private String accountPassword;
+	private String accountName;
+	private String accountCookie;
+	private String accountIde;
+	private String accountLogin;
+	private String accountPassword;
+
+	public void setAccountName(String accountName) {
+		this.accountName = accountName;
+	}
+
+	public void setAccountLogin(String accountLogin) {
+		this.accountLogin = accountLogin;
+	}
+
+	public void setAccountPassword(String accountPassword) {
+		this.accountPassword = accountPassword;
+	}
+
 
     public void setAccountIde(String accountIde) {
         this.accountIde = accountIde;

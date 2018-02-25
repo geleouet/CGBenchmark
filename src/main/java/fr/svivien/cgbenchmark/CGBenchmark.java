@@ -4,6 +4,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
@@ -25,6 +26,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
@@ -66,6 +68,8 @@ public class CGBenchmark {
         try {
             globalConfiguration = parseConfigurationFile(cfgFilePath);
             checkConfiguration(globalConfiguration);
+            
+            System.out.println(new GsonBuilder().create().toJson(globalConfiguration));
         } catch (UnsupportedEncodingException | FileNotFoundException | JsonIOException | JsonSyntaxException e) {
             LOG.fatal("Failed to parse configuration file", e);
             System.exit(1);

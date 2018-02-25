@@ -26,7 +26,43 @@ public class GlobalConfiguration {
         return seedList;
     }
 
-    public Integer getRequestCooldown() {
+    public void setAccountConfigurationList(List<AccountConfiguration> accountConfigurationList) {
+		this.accountConfigurationList = accountConfigurationList;
+	}
+
+	public void setSeedList(List<String> seedList) {
+		this.seedList = seedList;
+	}
+
+	public void setRequestCooldown(Integer requestCooldown) {
+		this.requestCooldown = requestCooldown;
+	}
+
+	public void setRandomSeed(Boolean randomSeed) {
+		this.randomSeed = randomSeed;
+	}
+
+	public void setPlayerPosition(Integer playerPosition) {
+		this.playerPosition = playerPosition;
+	}
+
+	public void setMinEnemiesNumber(Integer minEnemiesNumber) {
+		this.minEnemiesNumber = minEnemiesNumber;
+	}
+
+	public void setMaxEnemiesNumber(Integer maxEnemiesNumber) {
+		this.maxEnemiesNumber = maxEnemiesNumber;
+	}
+
+	public void setCodeConfigurationList(List<CodeConfiguration> codeConfigurationList) {
+		this.codeConfigurationList = codeConfigurationList;
+	}
+
+	public void setMultiName(String multiName) {
+		this.multiName = multiName;
+	}
+
+	public Integer getRequestCooldown() {
         return requestCooldown;
     }
 

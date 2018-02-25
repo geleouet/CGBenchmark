@@ -1,0 +1,43 @@
+{
+	"multiList": [
+		{
+			"name": "",
+			"minOpponents": 1,
+			"maxOpponents": 4,
+			"seeds": [
+				{
+					"name": "seed"
+				}
+			]
+		},
+		{
+			"name": "code4life",
+			"minOpponents": 1,
+			"maxOpponents": 1,
+			"seeds": [
+				{
+					"name": "seed"
+				}
+			]
+		},
+		{
+			"name": "coders-strike-back",
+			"minOpponents": 1,
+			"maxOpponents": 1,
+			"seeds": [
+				{
+					"name": "seed"
+				},
+				{
+					"name": "pod_per_player"
+				},
+				{
+					"name": "pod_timeout"
+				},
+				{
+					"name": "map"
+				}
+			]
+		}
+	]
+}
