@@ -62,6 +62,7 @@ import fr.egaetan.cgbench.model.config.MultisConfig;
 import fr.egaetan.cgbench.model.config.PlayerPosition;
 import fr.egaetan.cgbench.model.config.SeedParamConfig;
 import fr.egaetan.cgbench.services.SearchAgentId;
+import fr.svivien.cgbenchmark.SessionLogIn;
 import fr.svivien.cgbenchmark.model.config.AccountConfiguration;
 import fr.svivien.cgbenchmark.model.config.CodeConfiguration;
 import fr.svivien.cgbenchmark.model.config.EnemyConfiguration;
@@ -92,6 +93,7 @@ public class ConfPanel {
 	Runnable updateSeeds;
 
 	ObservableValue<GameConfig> currentGame = new ObservableValue<>();
+	ObservableValue<AccountConfiguration> currentLogin = new ObservableValue<>();
 
 	private List<SeedParamConfig> seedsConfig;
 	private SearchAgentId searchAgentId;
@@ -317,12 +319,11 @@ public class ConfPanel {
 			
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if (currentGame.value != null) {
-					
-				}
-				/*else {
-					currentGame.addPropertyChangeListener(listener);
-				}*/
+				new Thread(() -> {
+					AccountConfiguration accountConfiguration = accountConfiguration();
+					new SessionLogIn().retrieveAccountCookieAndSession(accountConfiguration, currentGame.value.getName());
+					currentLogin.setValue(accountConfiguration);
+				}, "Login").start();
 				
 			}
 		}), new GridBagConstraints(0, 4, 2, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.BOTH, new Insets(05, 05, 0, 05), 0, 0));
@@ -633,11 +634,7 @@ public class ConfPanel {
 		config.setCodeConfigurationList(code_configs);
 		config.setSeedList(new ArrayList<>());
 
-		AccountConfiguration accountConfiguration = new AccountConfiguration();
-		accountConfiguration.setAccountName(accountName.getText());
-		accountConfiguration.setAccountLogin(email.getText());
-		accountConfiguration.setAccountPassword(new String(password.getPassword()));
-		config.getAccountConfigurationList().add(accountConfiguration);
+		config.getAccountConfigurationList().add(accountConfiguration());
 
 		config.setMaxEnemiesNumber((Integer) maxEnnemies.getSelectedItem());
 		config.setMinEnemiesNumber((Integer) minEnnemies.getSelectedItem());
@@ -650,6 +647,14 @@ public class ConfPanel {
 			config.getSeedList().add(seed);
 		}
 		return config;
+	}
+
+	AccountConfiguration accountConfiguration() {
+		AccountConfiguration accountConfiguration = new AccountConfiguration();
+		accountConfiguration.setAccountName(accountName.getText());
+		accountConfiguration.setAccountLogin(email.getText());
+		accountConfiguration.setAccountPassword(new String(password.getPassword()));
+		return accountConfiguration;
 	}
 
 	public GlobalConfiguration readConfig(String filePath) {
@@ -695,6 +700,10 @@ public class ConfPanel {
 				updateEnnemies[codesTabbed.getSelectedIndex()].run();
 			}
 		};
+	}
+
+	public ObservableValue<AccountConfiguration> currentLogin() {
+		return currentLogin;
 	}
 
 }

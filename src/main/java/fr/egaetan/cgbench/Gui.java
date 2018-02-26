@@ -26,6 +26,7 @@ import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 
 import fr.egaetan.cgbench.api.LeaderboardApi;
+import fr.egaetan.cgbench.api.LeaderboardLeagueApi;
 import fr.egaetan.cgbench.model.config.MultisConfig;
 import fr.egaetan.cgbench.services.SearchAgentId;
 import fr.egaetan.cgbench.ui.BatchRun;
@@ -44,6 +45,7 @@ public class Gui {
     ConfPanel confPane;
 	MultisConfig multisConfig;
 	private LeaderboardApi leaderboardApi;
+	private LeaderboardLeagueApi leaderboardLeagueApi;
 	private LeaderBoardPane leaderboardPane;
 
 	
@@ -68,6 +70,7 @@ public class Gui {
 		OkHttpClient client = new OkHttpClient.Builder().readTimeout(600, TimeUnit.SECONDS).build();
 		Retrofit retrofit = new Retrofit.Builder().client(client).baseUrl(Constants.CG_HOST).addConverterFactory(GsonConverterFactory.create()).build();
 		leaderboardApi = retrofit.create(LeaderboardApi.class);
+		leaderboardLeagueApi = retrofit.create(LeaderboardLeagueApi.class);
 	}
 	
 	private void load(String string) {
@@ -101,7 +104,7 @@ public class Gui {
 		confPane = new ConfPanel(multisConfig, new SearchAgentId(leaderboardApi), runBatch);
 		confPane.buildConfPane();
 		
-		leaderboardPane = new LeaderBoardPane(confPane.gameConfig(), confPane.ennemiesLink(), leaderboardApi);
+		leaderboardPane = new LeaderBoardPane(confPane.gameConfig(), confPane.ennemiesLink(), leaderboardLeagueApi);
 		leaderboardPane.buildPane();
 		
 		JSplitPane splittedConfig = new JSplitPane();
