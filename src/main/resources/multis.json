@@ -21,6 +21,23 @@
 			]
 		},
 		{
+			"name": "game-of-drones",
+			"global_name": "game-of-drone",
+			"minOpponents": 1,
+			"maxOpponents": 4,
+			"seeds": [
+				{
+					"name": "nbZones"
+				},
+				{
+					"name": "nbDrones"
+				},
+				{
+					"name": "gameSeed"
+				}
+			]
+		},
+		{
 			"name": "coders-strike-back",
 			"minOpponents": 1,
 			"maxOpponents": 1,

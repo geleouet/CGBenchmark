@@ -23,12 +23,14 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.SwingUtilities;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
 import fr.egaetan.cgbench.api.LeaderboardApi;
 import fr.egaetan.cgbench.api.LeaderboardParam;
 import fr.egaetan.cgbench.model.config.GameConfig;
+import fr.egaetan.cgbench.model.leaderboard.Leaderboard;
 import fr.egaetan.cgbench.model.leaderboard.SuccessLeaderboard;
 import fr.egaetan.cgbench.model.leaderboard.User;
 import fr.egaetan.cgbench.ui.ConfPanel.EnnemiesLink;
@@ -39,9 +41,9 @@ public class LeaderBoardPane {
 
 	private LeaderboardApi leaderboardApi;
 	private JScrollPane scroll;
-	private List<User> users;
 	private BoardModel model;
 	private EnnemiesLink ennemiesLink;
+	List<User> users;
 
 	private ExecutorService bgThread = Executors.newCachedThreadPool(new ThreadFactory() {
 
@@ -68,10 +70,12 @@ public class LeaderBoardPane {
 			model.fireTableDataChanged();
 			return;
 		}
-		Call<SuccessLeaderboard> load = this.leaderboardApi.load(new LeaderboardParam(config.getName()));
+		Call<SuccessLeaderboard> load = this.leaderboardApi.load(new LeaderboardParam(config));
 		try {
 			Response<SuccessLeaderboard> execute = load.execute();
-			users = execute.body().getSuccess().getUsers();
+			SuccessLeaderboard body = execute.body();
+			Leaderboard success = body.getSuccess();
+			users = success.getUsers();
 			model.fireTableDataChanged();
 
 			if (users.size() > 0) {
@@ -82,42 +86,68 @@ public class LeaderBoardPane {
 		}
 	}
 
-	void preloadAvatars() throws MalformedURLException, IOException {
+	void preloadAvatars() {
 		File avatarsDir = new File("./avatars");
 		if (!avatarsDir.exists()) {
 			avatarsDir.mkdirs();
 		}
+		ExecutorService avatarLoader = Executors.newFixedThreadPool(8, new ThreadFactory() {
+
+			AtomicInteger counter = new AtomicInteger(0);
+
+			@Override
+			public Thread newThread(Runnable r) {
+				Thread t = new Thread(r, "LoadAvatars-thread-" + counter.incrementAndGet());
+				t.setDaemon(true);
+				return t;
+			}
+		});
+		
 		for (int user_i = 0; user_i < users.size(); user_i++) {
-			User userl = users.get(user_i);
-			if (userl.getCodingamer().getAvatar() == null) {
-				final File file = new File("./avatars/avatarNull.png");
-				if (!file.exists()) {
-					URL url = new URL("https://static.codingame.com/common/images/img_general_avatar.e40ca637.png"); // navigation_avatar
-					Files.copy(url.openStream(), file.toPath());
-					https: // static.codingame.com/common/images/img_general_avatar.e40ca637.png
-					for (int j = 0; j < users.size(); j++) {
-						if (users.get(j).getCodingamer().getAvatar() == null) {
-							model.fireTableCellUpdated(user_i, 1);
-						}
+			int user_i$ = user_i;
+			avatarLoader.execute(() -> {
+				try {
+					User userl = users.get(user_i$);
+					if (userl.getCodingamer() == null) {
+						
+						return;
 					}
-					continue;
+					if (userl.getCodingamer().getAvatar() == null) {
+						final File file = new File("./avatars/avatarNull.png");
+						if (!file.exists()) {
+							URL url = new URL("https://static.codingame.com/common/images/img_general_avatar.e40ca637.png"); // navigation_avatar
+							Files.copy(url.openStream(), file.toPath());
+							https: // static.codingame.com/common/images/img_general_avatar.e40ca637.png
+							for (int j = 0; j < users.size(); j++) {
+								if (users.get(j).getCodingamer().getAvatar() == null) {
+									SwingUtilities.invokeLater(() -> model.fireTableCellUpdated(user_i$, 1)); 
+								}
+							}
+							return;
+						}
+						
+					}
+					final File file = new File("./avatars/avatar" + userl.getCodingamer().getAvatar() + ".png");
+					if (file.exists()) {
+						return;
+					}
+					URL url = new URL("https://static.codingame.com/servlet/fileservlet?id=" + userl.getCodingamer().getAvatar() + "&format=navigation_avatar"); // navigation_avatar
+					try {
+						Files.copy(url.openStream(), file.toPath());
+					} catch (FileNotFoundException e) {
+						URL urlSave = new URL("https://static.codingame.com/common/images/img_general_avatar.e40ca637.png"); // navigation_avatar
+						Files.copy(urlSave.openStream(), file.toPath());
+						
+					}
+					SwingUtilities.invokeLater(() -> model.fireTableCellUpdated(user_i$, 1)); 
 				}
-				
-			}
-			final File file = new File("./avatars/avatar" + userl.getCodingamer().getAvatar() + ".png");
-			if (file.exists()) {
-				continue;
-			}
-			URL url = new URL("https://static.codingame.com/servlet/fileservlet?id=" + userl.getCodingamer().getAvatar() + "&format=navigation_avatar"); // navigation_avatar
-			try {
-				Files.copy(url.openStream(), file.toPath());
-			} catch (FileNotFoundException e) {
-				URL urlSave = new URL("https://static.codingame.com/common/images/img_general_avatar.e40ca637.png"); // navigation_avatar
-				Files.copy(urlSave.openStream(), file.toPath());
-				
-			}
-			model.fireTableCellUpdated(user_i, 1);
+				catch (IOException e) {
+					e.printStackTrace();
+				}
+			});
+			
 		}
+		avatarLoader.shutdown();
 	}
 
 	public JComponent panel() {
@@ -134,9 +164,6 @@ public class LeaderBoardPane {
 
 			@Override
 			public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-				// label.setToolTipText("<html><img src=\"" +
-				// Main.class.getResource("tooltip.gif")
-				// + "\"> Tooltip ");
 				final Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 				c.setBackground(row % 2 == 0 ? BG_COLOR : Color.WHITE);
 				if (isSelected) {
@@ -145,16 +172,21 @@ public class LeaderBoardPane {
 				((JComponent) c).setToolTipText(null);
 				
 				if (table.convertColumnIndexToModel(column) == 1) {
-					final String avatarId = users.get(table.convertRowIndexToModel(row)).getCodingamer().getAvatar();
-					final ImageIcon icon = new ImageIcon("./avatars/avatar" + (avatarId != null ? avatarId : "Null") + ".png");
+					final String avatarId = avatar(users.get(table.convertRowIndexToModel(row)));
+					final ImageIcon icon = new ImageIcon("./avatars/avatar" + avatarId + ".png");
 					Image scaledInstance = icon.getImage().getScaledInstance(16, 16, Image.SCALE_FAST);
 					((JLabel) c).setIcon(new ImageIcon(scaledInstance));
-					((JLabel) c).setToolTipText("<html><img src=\"file:./avatars/avatar"+ (avatarId != null ? avatarId : "Null") + ".png\" height=\"50\" width=\"50\"></html>");
+					((JLabel) c).setToolTipText("<html><img src=\"file:./avatars/avatar"+ avatarId + ".png\" height=\"50\" width=\"50\"></html>");
 					
 				} else {
 					((JLabel) c).setIcon(null);
 				}
 				return c;
+			}
+
+			private String avatar(User user) {
+				String avatarId = user.getCodingamer().getAvatar();
+				return (avatarId != null ? avatarId : "Null");
 			}
 		};
 		board.setDefaultRenderer(Object.class, pyjama);
@@ -173,7 +205,7 @@ public class LeaderBoardPane {
 				if (e.getClickCount() == 2) {
 					int row = board.convertRowIndexToModel(board.rowAtPoint(e.getPoint()));
 					User user = users.get(row);
-					ennemiesLink.add(user.getCodingamer().getPseudo(), user.getAgentId());
+					ennemiesLink.add(user.getPseudo(), user.getAgentId());
 				}
 			}
 		});
@@ -189,7 +221,7 @@ public class LeaderBoardPane {
 		public String getColumnName(int column) {
 			switch (column) {
 			case 0:
-				return "Rank";
+				return "#";
 			case 1:
 				return "Name";
 			case 2:
@@ -236,7 +268,7 @@ public class LeaderBoardPane {
 			case 0:
 				return user.getRank();
 			case 1:
-				return user.getCodingamer().getPseudo();
+				return user.getPseudo();
 			case 2:
 				return user.getScore();
 			case 3:

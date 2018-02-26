@@ -11,9 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
-import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -29,26 +27,14 @@ import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 
-import fr.svivien.cgbenchmark.api.LoginApi;
-import fr.svivien.cgbenchmark.api.SessionApi;
 import fr.svivien.cgbenchmark.model.config.AccountConfiguration;
 import fr.svivien.cgbenchmark.model.config.CodeConfiguration;
 import fr.svivien.cgbenchmark.model.config.EnemyConfiguration;
 import fr.svivien.cgbenchmark.model.config.GlobalConfiguration;
-import fr.svivien.cgbenchmark.model.request.login.LoginRequest;
-import fr.svivien.cgbenchmark.model.request.login.LoginResponse;
-import fr.svivien.cgbenchmark.model.request.session.SessionRequest;
-import fr.svivien.cgbenchmark.model.request.session.SessionResponse;
 import fr.svivien.cgbenchmark.model.test.ResultWrapper;
 import fr.svivien.cgbenchmark.model.test.TestInput;
 import fr.svivien.cgbenchmark.producerconsumer.Broker;
 import fr.svivien.cgbenchmark.producerconsumer.Consumer;
-import okhttp3.Cookie;
-import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
-import retrofit2.Call;
-import retrofit2.GsonConverterFactory;
-import retrofit2.Retrofit;
 
 public class CGBenchmark {
 
@@ -60,7 +46,7 @@ public class CGBenchmark {
     private Random rnd = new Random();
     private EnemyConfiguration me = new EnemyConfiguration(-1, "[ME]");
     private AtomicBoolean pause = new AtomicBoolean(false);
-
+    SessionLogIn loginSession = new SessionLogIn();
 
     public CGBenchmark(String cfgFilePath) {
         this(readConfigurationFile(cfgFilePath));
@@ -76,7 +62,7 @@ public class CGBenchmark {
 		LOG.info("Registering " + globalConfiguration.getAccountConfigurationList().size() + " account(s)");
         for (AccountConfiguration accountCfg : globalConfiguration.getAccountConfigurationList()) {
             try {
-                retrieveAccountCookieAndSession(accountCfg, globalConfiguration.getMultiName());
+                loginSession.retrieveAccountCookieAndSession(accountCfg, globalConfiguration.getMultiName());
             } catch (IllegalStateException e) {
                 LOG.fatal("Error while retrieving account cookie and session", e);
                 System.exit(1);
@@ -157,56 +143,6 @@ public class CGBenchmark {
         }
 
         LOG.info("No more tests. Ending.");
-    }
-
-    private void retrieveAccountCookieAndSession(AccountConfiguration accountCfg, String multiName) {
-        LOG.info("Retrieving cookie and session for account " + accountCfg.getAccountName());
-
-        OkHttpClient client = new OkHttpClient.Builder().readTimeout(600, TimeUnit.SECONDS).build();
-        Retrofit retrofit = new Retrofit.Builder().client(client).baseUrl(Constants.CG_HOST).addConverterFactory(GsonConverterFactory.create()).build();
-        LoginApi loginApi = retrofit.create(LoginApi.class);
-
-        LoginRequest loginRequest = new LoginRequest(accountCfg.getAccountLogin(), accountCfg.getAccountPassword());
-        Call<LoginResponse> loginCall = loginApi.login(loginRequest);
-
-        // Calling getSessionHandle API
-        retrofit2.Response<LoginResponse> loginResponse;
-        try {
-            loginResponse = loginCall.execute();
-        } catch (IOException | RuntimeException e) {
-            throw new IllegalStateException("Login request failed");
-        }
-
-        if (loginResponse.body().success == null || loginResponse.body().success.userId == null) {
-            throw new IllegalStateException("Login failed, please check login/pwd in configuration");
-        }
-
-        // Selecting appropriate cookie; we keep the one that expires the later
-        Optional<Cookie> optCookie = loginResponse.headers().values(Constants.SET_COOKIE).stream()
-                .map(c -> Cookie.parse(HttpUrl.parse(Constants.CG_HOST), c))
-                .filter(c -> c.name().equals(Constants.REMCG) && c.expiresAt() > new Date().getTime())
-                .sorted((a, b) -> (int) (b.expiresAt() - a.expiresAt()))
-                .findFirst();
-
-        if (!optCookie.isPresent()) {
-            throw new IllegalStateException("Cannot find required cookie in getSessionHandle response");
-        }
-
-        // Setting the cookie in the account configuration
-        accountCfg.setAccountCookie(optCookie.get().toString());
-
-        SessionApi sessionApi = retrofit.create(SessionApi.class);
-        SessionRequest sessionRequest = new SessionRequest(loginResponse.body().success.userId, multiName);
-        Call<SessionResponse> sessionCall = sessionApi.getSessionHandle(sessionRequest, Constants.CG_HOST + "/puzzle/" + multiName, accountCfg.getAccountCookie());
-        retrofit2.Response<SessionResponse> sessionResponse;
-        try {
-            sessionResponse = sessionCall.execute();
-        } catch (IOException | RuntimeException e) {
-            throw new IllegalStateException("Session request failed");
-        }
-
-        // Setting the IDE session in the account configuration
-        accountCfg.setAccountIde(sessionResponse.body().success.handle);
     }
 
     private void createTests(CodeConfiguration codeCfg) throws IOException, InterruptedException {

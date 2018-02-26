@@ -289,15 +289,7 @@ public class ConfPanel {
 		password = new JPasswordField(10);
 		accountConfig.add(password, new GridBagConstraints(1, 2, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.BOTH, new Insets(05, 05, 0, 05), 0, 0));
 
-		TitledBorder border = new TitledBorder("Account");
-		border.setTitleJustification(TitledBorder.LEFT);
-		border.setTitlePosition(TitledBorder.TOP);
-		accountConfig.setBorder(border);
-
-		JPanel globalConfig = new JPanel(new GridBagLayout());
-
-		nbPlayer = 4;
-		globalConfig.add(new JLabel("Multi:"), new GridBagConstraints(0, 0, 1, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
+		accountConfig.add(new JLabel("Multi:"), new GridBagConstraints(0, 3, 1, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
 		multiName = new JComboBox<>(multisConfig.getMultiList().toArray(new GameConfig[0]));
 		multiName.addActionListener(new ActionListener() {
 
@@ -317,8 +309,33 @@ public class ConfPanel {
 				return label;
 			}
 		});
-		globalConfig.add(multiName, new GridBagConstraints(1, 0, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(05, 05, 0, 05), 0, 0));
+		accountConfig.add(multiName, new GridBagConstraints(1, 3, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(05, 05, 0, 05), 0, 0));
 
+		
+		
+		accountConfig.add(new JButton(new AbstractAction("Login") {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (currentGame.value != null) {
+					
+				}
+				/*else {
+					currentGame.addPropertyChangeListener(listener);
+				}*/
+				
+			}
+		}), new GridBagConstraints(0, 4, 2, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.BOTH, new Insets(05, 05, 0, 05), 0, 0));
+
+		TitledBorder border = new TitledBorder("Account");
+		border.setTitleJustification(TitledBorder.LEFT);
+		border.setTitlePosition(TitledBorder.TOP);
+		accountConfig.setBorder(border);
+
+		JPanel globalConfig = new JPanel(new GridBagLayout());
+
+		nbPlayer = 4;
+		
 		cooldown = new JFormattedTextField(new DecimalFormat());
 		cooldown.setInputVerifier(new InputVerifier() {
 

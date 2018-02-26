@@ -5,6 +5,7 @@ import java.util.List;
 public class GameConfig {
 
 	String name;
+	String global_name;
 	int minOpponents;
 	int maxOpponents;
 	List<SeedParamConfig> seeds;
@@ -39,6 +40,14 @@ public class GameConfig {
 
 	public void setMaxOpponents(int maxOpponents) {
 		this.maxOpponents = maxOpponents;
+	}
+
+	public String getGlobal_name() {
+		return global_name;
+	}
+
+	public void setGlobal_name(String global_name) {
+		this.global_name = global_name;
 	}
 
 

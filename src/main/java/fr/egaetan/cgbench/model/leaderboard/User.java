@@ -4,6 +4,7 @@ public class User {
 	int rank;
 	double score;
 	String programmingLanguage;
+	String pseudo;
 	int agentId;
 	Codingamer codingamer;
 
@@ -54,5 +55,13 @@ public class User {
 
 	public void setScore(double score) {
 		this.score = score;
+	}
+
+	public String getPseudo() {
+		return pseudo;
+	}
+
+	public void setPseudo(String pseudo) {
+		this.pseudo = pseudo;
 	}
 }
