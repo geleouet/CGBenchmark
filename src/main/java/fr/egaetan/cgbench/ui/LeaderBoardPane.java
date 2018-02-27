@@ -5,7 +5,6 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Image;
@@ -18,8 +17,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -37,20 +34,14 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
-import javax.swing.PopupFactory;
 import javax.swing.SwingUtilities;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
-import fr.egaetan.cgbench.model.config.GameConfig;
 import fr.egaetan.cgbench.model.leaderboard.Battle;
 import fr.egaetan.cgbench.model.leaderboard.Codingamer;
-import fr.egaetan.cgbench.model.leaderboard.Leaderboard;
-import fr.egaetan.cgbench.model.leaderboard.SuccessLeaderboard;
 import fr.egaetan.cgbench.model.leaderboard.User;
-import fr.egaetan.cgbench.services.LeaderBoardLoader;
 import fr.egaetan.cgbench.ui.ConfPanel.EnnemiesLink;
-import fr.svivien.cgbenchmark.model.config.AccountConfiguration;
 
 public class LeaderBoardPane {
 

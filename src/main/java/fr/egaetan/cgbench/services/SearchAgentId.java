@@ -6,8 +6,8 @@ import java.util.Optional;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import fr.egaetan.cgbench.api.LeaderboardParam;
 import fr.egaetan.cgbench.api.LeaderboardApi;
+import fr.egaetan.cgbench.api.param.LeaderboardParam;
 import fr.egaetan.cgbench.model.leaderboard.Leaderboard;
 import fr.egaetan.cgbench.model.leaderboard.SuccessLeaderboard;
 import fr.egaetan.cgbench.model.leaderboard.User;

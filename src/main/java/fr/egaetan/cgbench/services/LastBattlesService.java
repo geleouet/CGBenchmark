@@ -9,7 +9,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import fr.egaetan.cgbench.api.LastBattlesApi;
-import fr.egaetan.cgbench.api.LastBattlesParam;
+import fr.egaetan.cgbench.api.param.LastBattlesParam;
 import fr.egaetan.cgbench.model.config.GameConfig;
 import fr.egaetan.cgbench.model.leaderboard.Battle;
 import fr.egaetan.cgbench.model.leaderboard.SuccessLastBattles;

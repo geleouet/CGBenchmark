@@ -1,5 +1,6 @@
 package fr.egaetan.cgbench.api;
 
+import fr.egaetan.cgbench.api.param.TestSessionParam;
 import fr.egaetan.cgbench.model.tests_session.TestSessionResult;
 import fr.svivien.cgbenchmark.Constants;
 import retrofit2.Call;

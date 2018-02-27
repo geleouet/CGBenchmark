@@ -1,4 +1,4 @@
-package fr.egaetan.cgbench.api;
+package fr.egaetan.cgbench.api.param;
 
 import java.util.ArrayList;
 

@@ -7,9 +7,9 @@ import org.apache.commons.logging.LogFactory;
 
 import fr.egaetan.cgbench.Gui;
 import fr.egaetan.cgbench.api.LeaderboardLeagueApi;
-import fr.egaetan.cgbench.api.LeagueLeaderBoardParam;
 import fr.egaetan.cgbench.api.TestSessionApi;
-import fr.egaetan.cgbench.api.TestSessionParam;
+import fr.egaetan.cgbench.api.param.LeagueLeaderBoardParam;
+import fr.egaetan.cgbench.api.param.TestSessionParam;
 import fr.egaetan.cgbench.model.config.GameConfig;
 import fr.egaetan.cgbench.model.leaderboard.SuccessLeaderboard;
 import fr.egaetan.cgbench.model.tests_session.TestSessionResult;

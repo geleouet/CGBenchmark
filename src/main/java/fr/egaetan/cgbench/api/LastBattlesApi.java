@@ -1,7 +1,6 @@
 package fr.egaetan.cgbench.api;
 
-import java.net.URL;
-
+import fr.egaetan.cgbench.api.param.LastBattlesParam;
 import fr.egaetan.cgbench.model.leaderboard.SuccessLastBattles;
 import fr.svivien.cgbenchmark.Constants;
 import retrofit2.Call;

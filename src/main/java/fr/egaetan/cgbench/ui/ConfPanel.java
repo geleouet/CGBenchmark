@@ -45,8 +45,6 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.TitledBorder;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
@@ -80,12 +78,12 @@ public class ConfPanel {
 	private JTextField accountName;
 	private JTextField email;
 	private JPasswordField password;
-	private JComboBox<GameConfig> multiName;
-	private JFormattedTextField cooldown;
+	JComboBox<GameConfig> multiName;
+	JFormattedTextField cooldown;
 	private JComboBox<PlayerPosition> playerPosition;
 	private JComboBox<Integer> minEnnemies;
 	private JComboBox<Integer> maxEnnemies;
-	private JCheckBox randomSeed;
+	JCheckBox randomSeed;
 
 	private int nbPlayer;
 
@@ -97,10 +95,10 @@ public class ConfPanel {
 	ObservableValue<GameConfig> currentGame;
 	ObservableValue<AccountConfiguration> currentLogin;
 
-	private List<SeedParamConfig> seedsConfig;
-	private SearchAgentId searchAgentId;
-	private List<CodeConfiguration> code_configs = new ArrayList<>();
-	private JTabbedPane codesTabbed;
+	List<SeedParamConfig> seedsConfig;
+	SearchAgentId searchAgentId;
+	List<CodeConfiguration> code_configs = new ArrayList<>();
+	JTabbedPane codesTabbed;
 	private BatchRun batchRun;
 
 	public ConfPanel(MultisConfig multisConfig, SearchAgentId searchAgentId, BatchRun batchRun, ObservableValue<GameConfig> currentGame, ObservableValue<AccountConfiguration> currentLogin) {
@@ -339,7 +337,7 @@ public class ConfPanel {
 
 		JPanel globalConfig = new JPanel(new GridBagLayout());
 
-		nbPlayer = 4;
+		nbPlayer = 4; // TODO read nbPlayers fro mmulti configuration
 		
 		cooldown = new JFormattedTextField(new DecimalFormat());
 		cooldown.setInputVerifier(new InputVerifier() {
@@ -365,15 +363,15 @@ public class ConfPanel {
 		globalConfig.add(new JLabel("Cooldown:"), new GridBagConstraints(0, 1, 1, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
 		globalConfig.add(cooldown, new GridBagConstraints(1, 1, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(05, 05, 0, 05), 0, 0));
 
-		playerPosition = new JComboBox<PlayerPosition>(PlayerPosition.forPlayersGame(nbPlayer));
+		playerPosition = new JComboBox<>(PlayerPosition.forPlayersGame(nbPlayer));
 		globalConfig.add(new JLabel("Player position:"), new GridBagConstraints(0, 2, 1, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
 		globalConfig.add(playerPosition, new GridBagConstraints(1, 2, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(05, 05, 0, 05), 0, 0));
 
-		minEnnemies = new JComboBox<Integer>(new Integer[] { 1, 2, 3, 4 });
+		minEnnemies = new JComboBox<>(new Integer[] { 1, 2, 3, 4 });
 		globalConfig.add(new JLabel("Min. Ennemies:"), new GridBagConstraints(0, 3, 1, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
 		globalConfig.add(minEnnemies, new GridBagConstraints(1, 3, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(05, 05, 0, 05), 0, 0));
 
-		maxEnnemies = new JComboBox<Integer>(new Integer[] { 1, 2, 3, 4 });
+		maxEnnemies = new JComboBox<>(new Integer[] { 1, 2, 3, 4 });
 		globalConfig.add(new JLabel("Max. Ennemies:"), new GridBagConstraints(0, 4, 1, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
 		globalConfig.add(maxEnnemies, new GridBagConstraints(1, 4, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(05, 05, 0, 05), 0, 0));
 
@@ -413,7 +411,7 @@ public class ConfPanel {
 		globalConfig.setBorder(globalOorder);
 
 		codesTabbed = new JTabbedPane();
-		updateCodesConfig(codesTabbed);
+		updateCodesConfig();
 		
 		JPanel runPane = new JPanel(new GridBagLayout());
 		JButton runButton = new JButton(new AbstractAction("Run") {
@@ -468,7 +466,7 @@ public class ConfPanel {
 	}
 
 	@SuppressWarnings("serial")
-	void updateCodesConfig(JTabbedPane codesTabbed) {
+	void updateCodesConfig() {
 		codesTabbed.removeAll();
 		for (int code_i = 0; code_i < code_configs.size(); code_i++) {
 
@@ -480,7 +478,7 @@ public class ConfPanel {
 				@Override
 				public void actionPerformed(ActionEvent e) {
 					code_configs.remove(code_tab$);
-					updateCodesConfig(codesTabbed);
+					updateCodesConfig();
 				}
 			}), new GridBagConstraints(0, 0, 2, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
 			
@@ -629,12 +627,10 @@ public class ConfPanel {
 		}
 
 		codesTabbed.add("+", new JLabel(""));
-		codesTabbed.addChangeListener(new ChangeListener() {
-			public void stateChanged(ChangeEvent e) {
-				if (codesTabbed.getSelectedIndex() == codesTabbed.getTabCount() - 1 && codesTabbed.getTabCount() > 1) {
-					code_configs.add(new CodeConfiguration());
-					updateCodesConfig(codesTabbed);
-				}
+		codesTabbed.addChangeListener(e -> {
+			if (codesTabbed.getSelectedIndex() == codesTabbed.getTabCount() - 1 && codesTabbed.getTabCount() > 1) {
+				code_configs.add(new CodeConfiguration());
+				updateCodesConfig();
 			}
 		});
 	}
@@ -654,7 +650,7 @@ public class ConfPanel {
 
 		code_configs = config.getCodeConfigurationList();
 
-		updateCodesConfig(codesTabbed);
+		updateCodesConfig();
 		
 		for (int i = 0; i < code_configs.size(); i++) {
 			updateEnnemies[i].run();

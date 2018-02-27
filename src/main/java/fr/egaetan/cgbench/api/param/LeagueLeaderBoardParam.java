@@ -1,10 +1,10 @@
-package fr.egaetan.cgbench.api;
+package fr.egaetan.cgbench.api.param;
 
 import java.util.ArrayList;
 
-import fr.svivien.cgbenchmark.model.config.AccountConfiguration;
-
 public class LeagueLeaderBoardParam extends ArrayList<Object> {
+
+	private static final long serialVersionUID = -3910852510023366626L;
 
 	static class DivisionParam {
 		int divisionId;

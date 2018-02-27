@@ -1,5 +1,6 @@
 package fr.egaetan.cgbench.api;
 
+import fr.egaetan.cgbench.api.param.LeaderboardParam;
 import fr.egaetan.cgbench.model.leaderboard.SuccessLeaderboard;
 import fr.svivien.cgbenchmark.Constants;
 import retrofit2.Call;

@@ -156,7 +156,6 @@ public class Gui {
 	public void readRessources() {
 		multisConfig = readMultisList();
 	}
-
 	
 	private void buildGui() {
 		JFrame mainFrame = new JFrame("CGBenchmark");
