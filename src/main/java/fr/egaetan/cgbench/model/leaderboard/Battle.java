@@ -9,6 +9,20 @@ public class Battle {
 	boolean done;
 	Game game;
 
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof Battle) {
+			Battle other = (Battle) obj;
+			return other.gameId == gameId;
+		}
+		return super.equals(obj);
+	}
+	
+	@Override
+	public int hashCode() {
+		return gameId;
+	}
+	
 	public List<Player> getPlayers() {
 		return players;
 	}
@@ -34,16 +48,49 @@ public class Battle {
 	}
 
 	public Result resultFor(User user) {
+		return resultFor(user.agentId);
+	}
+
+	public Result resultFor(int agentId) {
 		if (players.size() == 2) {
 			if (players.get(0).getPosition() == players.get(1).getPosition()) {
 				return Result.DRAW;
 			}
-			if (players.get(0).playerAgentId == user.agentId && players.get(0).getPosition() == 0) {
+			if (players.get(0).playerAgentId == agentId && players.get(0).getPosition() == 0) {
 				return Result.WIN;
 			}
-			else if (players.get(1).playerAgentId == user.agentId && players.get(1).getPosition() == 0) {
+			else if (players.get(1).playerAgentId == agentId && players.get(1).getPosition() == 0) {
 				return Result.WIN;
 			}
+			return Result.LOSS;
+		}
+		else if (players.size() == 3) {
+			if (players.get(0).playerAgentId == agentId && players.get(0).getPosition() == 0) {
+				return Result.WIN;
+			}
+			if (players.get(1).playerAgentId == agentId && players.get(1).getPosition() == 0) {
+				return Result.WIN;
+			}
+			if (players.get(2).playerAgentId == agentId && players.get(2).getPosition() == 0) {
+				return Result.WIN;
+			}
+			
+			return Result.LOSS;
+		}
+		else if (players.size() == 4) {
+			if (players.get(0).playerAgentId == agentId && players.get(0).getPosition() == 0) {
+				return Result.WIN;
+			}
+			if (players.get(1).playerAgentId == agentId && players.get(1).getPosition() == 0) {
+				return Result.WIN;
+			}
+			if (players.get(2).playerAgentId == agentId && players.get(2).getPosition() == 0) {
+				return Result.WIN;
+			}
+			if (players.get(3).playerAgentId == agentId && players.get(3).getPosition() == 0) {
+				return Result.WIN;
+			}
+			
 			return Result.LOSS;
 		}
 		return Result.ERROR;
@@ -55,6 +102,10 @@ public class Battle {
 
 	public void setGame(Game game) {
 		this.game = game;
+	}
+
+	public int position(User userId) {
+		return players.stream().filter(p-> p .getPlayerAgentId() == userId.agentId).map(p->p.position).findFirst().orElse(99);
 	}
 
 }

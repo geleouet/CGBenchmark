@@ -1,5 +1,7 @@
 package fr.svivien.cgbenchmark.model.config;
 
+import fr.egaetan.cgbench.model.leaderboard.User;
+
 public class AccountConfiguration {
 
 	private String accountName;
@@ -7,6 +9,8 @@ public class AccountConfiguration {
 	private String accountIde;
 	private String accountLogin;
 	private String accountPassword;
+	private int userId;
+	private User user;
 
 	public void setAccountName(String accountName) {
 		this.accountName = accountName;
@@ -48,4 +52,20 @@ public class AccountConfiguration {
     public void setAccountCookie(String accountCookie) {
         this.accountCookie = accountCookie;
     }
+
+	public int getUserId() {
+		return userId;
+	}
+
+	public void setUserId(int userId) {
+		this.userId = userId;
+	}
+
+	public void setUser(User user) {
+		this.user = user;
+	}
+
+	public User getUser() {
+		return user;
+	}
 }

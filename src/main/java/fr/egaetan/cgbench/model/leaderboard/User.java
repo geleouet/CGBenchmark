@@ -1,5 +1,7 @@
 package fr.egaetan.cgbench.model.leaderboard;
 
+import fr.egaetan.cgbench.model.tests_session.League;
+
 public class User {
 	int rank;
 	double score;
@@ -7,6 +9,8 @@ public class User {
 	String pseudo;
 	int agentId;
 	Codingamer codingamer;
+	League league;
+	String testSessionHandle;
 
 	public int getRank() {
 		return rank;
@@ -41,6 +45,9 @@ public class User {
 	}
 
 	public boolean matchName(String name) {
+		if (codingamer == null || name == null) {
+			return false;
+		}
 		return name.equals(codingamer.pseudo);
 	}
 
@@ -63,5 +70,13 @@ public class User {
 
 	public void setPseudo(String pseudo) {
 		this.pseudo = pseudo;
+	}
+
+	public League getLeague() {
+		return league;
+	}
+
+	public void setLeague(League league) {
+		this.league = league;
 	}
 }

@@ -47,6 +47,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -92,8 +94,8 @@ public class ConfPanel {
 	List<String> seedsOrigine = new ArrayList<>();
 	Runnable updateSeeds;
 
-	ObservableValue<GameConfig> currentGame = new ObservableValue<>();
-	ObservableValue<AccountConfiguration> currentLogin = new ObservableValue<>();
+	ObservableValue<GameConfig> currentGame;
+	ObservableValue<AccountConfiguration> currentLogin;
 
 	private List<SeedParamConfig> seedsConfig;
 	private SearchAgentId searchAgentId;
@@ -101,10 +103,12 @@ public class ConfPanel {
 	private JTabbedPane codesTabbed;
 	private BatchRun batchRun;
 
-	public ConfPanel(MultisConfig multisConfig, SearchAgentId searchAgentId, BatchRun batchRun) {
+	public ConfPanel(MultisConfig multisConfig, SearchAgentId searchAgentId, BatchRun batchRun, ObservableValue<GameConfig> currentGame, ObservableValue<AccountConfiguration> currentLogin) {
 		this.multisConfig = multisConfig;
 		this.searchAgentId = searchAgentId;
 		this.batchRun = batchRun;
+		this.currentGame = currentGame;
+		this.currentLogin = currentLogin;
 		code_configs.add(new CodeConfiguration());
 	}
 
@@ -496,7 +500,7 @@ public class ConfPanel {
 					}
 				}
 			});
-			codePath.add(path, new GridBagConstraints(0, 0, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+			codePath.add(path, new GridBagConstraints(0, 0, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(0, 0, 0, 0), 0, 0));
 			codePath.add(openDirectory, new GridBagConstraints(1, 0, 1, 1, 0., 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(0, 0, 0, 0), 0, 0));
 			codeConfig.add(codePath, new GridBagConstraints(1, 1, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.BOTH, new Insets(05, 05, 0, 05), 0, 0));
 
@@ -556,27 +560,71 @@ public class ConfPanel {
 			nbReplays.setValue(codeConfiguration.getNbReplays());
 			updateEnnemies[code_i].run();
 
-			path.addActionListener(new ActionListener() {
+			path.getDocument().addDocumentListener(new DocumentListener() {
 				
 				@Override
-				public void actionPerformed(ActionEvent e) {
-					codeConfiguration.setSourcePath(path.getText());
+				public void removeUpdate(DocumentEvent e) {
+					codeConfiguration.setSourcePath(path.getText());					
 				}
-			});
-			language.addActionListener(new ActionListener() {
 				
 				@Override
-				public void actionPerformed(ActionEvent e) {
-					codeConfiguration.setLanguage(language.getText());
+				public void insertUpdate(DocumentEvent e) {
+					codeConfiguration.setSourcePath(path.getText());				
 				}
-			});
-			nbReplays.addActionListener(new ActionListener() {
 				
 				@Override
-				public void actionPerformed(ActionEvent e) {
-					codeConfiguration.setNbReplays(Integer.parseInt(nbReplays.getText()));
+				public void changedUpdate(DocumentEvent e) {
+					codeConfiguration.setSourcePath(path.getText());				
 				}
 			});
+			language.getDocument().addDocumentListener(new DocumentListener() {
+				
+				@Override
+				public void removeUpdate(DocumentEvent e) {
+					codeConfiguration.setLanguage(language.getText());					
+				}
+				
+				@Override
+				public void insertUpdate(DocumentEvent e) {
+					codeConfiguration.setLanguage(language.getText());					
+				}
+				
+				@Override
+				public void changedUpdate(DocumentEvent e) {
+					codeConfiguration.setLanguage(language.getText());					
+				}
+			});
+			nbReplays.getDocument().addDocumentListener(new DocumentListener() {
+				
+				private Integer parse() {
+					try {
+						return Integer.parseInt(nbReplays.getText());
+					}
+					catch (NumberFormatException e) {
+						return codeConfiguration.getNbReplays();
+					}
+				}
+				
+				@Override
+				public void removeUpdate(DocumentEvent e) {
+					codeConfiguration.setNbReplays(parse());					
+				}
+
+				
+				@Override
+				public void insertUpdate(DocumentEvent e) {
+					codeConfiguration.setNbReplays(parse());					
+				}
+				
+				@Override
+				public void changedUpdate(DocumentEvent e) {
+					codeConfiguration.setNbReplays(parse());					
+				}
+			});
+			path.addActionListener(e -> codeConfiguration.setSourcePath(path.getText()));
+			language.addActionListener(e -> codeConfiguration.setLanguage(language.getText()));
+			nbReplays.addActionListener(e -> codeConfiguration.setNbReplays(Integer.parseInt(nbReplays.getText())));
+			
 			codesTabbed.add("" + code_i, codeConfig);
 		}
 

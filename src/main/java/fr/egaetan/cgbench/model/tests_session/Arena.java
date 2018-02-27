@@ -7,7 +7,7 @@ public class Arena {
     private ArenaCodinGamer arenaCodinGamer;
     private Division division;
     private int id;
-    private League_ league;
+    private League league;
     private int timeToPromotion;
 
     public ArenaCodinGamer getArenaCodinGamer() {
@@ -34,11 +34,11 @@ public class Arena {
         this.id = id;
     }
 
-    public League_ getLeague() {
+    public League getLeague() {
         return league;
     }
 
-    public void setLeague(League_ league) {
+    public void setLeague(League league) {
         this.league = league;
     }
 

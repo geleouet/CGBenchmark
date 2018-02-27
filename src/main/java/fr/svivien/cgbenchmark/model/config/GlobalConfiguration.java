@@ -126,7 +126,7 @@ public class GlobalConfiguration {
 	public void checkConfiguration() throws IllegalArgumentException {
 	    // Checks if every code file exists
 	    for (CodeConfiguration codeCfg : getCodeConfigurationList()) {
-	        if (!Files.isReadable(Paths.get(codeCfg.getSourcePath()))) {
+	        if (codeCfg.getSourcePath() == null || !Files.isReadable(Paths.get(codeCfg.getSourcePath()))) {
 	            throw new IllegalArgumentException("Cannot read " + codeCfg.getSourcePath());
 	        }
 	    }

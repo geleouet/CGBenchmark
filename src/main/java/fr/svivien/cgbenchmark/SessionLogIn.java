@@ -75,6 +75,7 @@ public class SessionLogIn {
 	
 	    // Setting the IDE session in the account configuration
 	    accountCfg.setAccountIde(sessionResponse.body().success.handle);
+	    accountCfg.setUserId(loginResponse.body().success.userId);
 	}
 
 }

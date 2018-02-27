@@ -1,6 +1,6 @@
 package fr.egaetan.cgbench.model.leaderboard;
 
-class Player {
+public class Player {
 	int playerAgentId;
 	int position;
 	int userId;

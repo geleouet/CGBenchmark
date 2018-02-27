@@ -2,48 +2,67 @@ package fr.egaetan.cgbench.ui;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.Image;
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
+import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
+import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.PopupFactory;
 import javax.swing.SwingUtilities;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
-import fr.egaetan.cgbench.api.LeaderboardApi;
-import fr.egaetan.cgbench.api.LeaderboardParam;
 import fr.egaetan.cgbench.model.config.GameConfig;
+import fr.egaetan.cgbench.model.leaderboard.Battle;
+import fr.egaetan.cgbench.model.leaderboard.Codingamer;
 import fr.egaetan.cgbench.model.leaderboard.Leaderboard;
 import fr.egaetan.cgbench.model.leaderboard.SuccessLeaderboard;
 import fr.egaetan.cgbench.model.leaderboard.User;
+import fr.egaetan.cgbench.services.LeaderBoardLoader;
 import fr.egaetan.cgbench.ui.ConfPanel.EnnemiesLink;
-import retrofit2.Call;
-import retrofit2.Response;
+import fr.svivien.cgbenchmark.model.config.AccountConfiguration;
 
 public class LeaderBoardPane {
 
-	private LeaderboardApi leaderboardApi;
+	final static Color BG_COLOR = new Color(0xeeeefe);
+	final static Color ME_COLOR = new Color(0xf9d140);
+
 	private JScrollPane scroll;
 	private BoardModel model;
-	private EnnemiesLink ennemiesLink;
+	EnnemiesLink ennemiesLink;
 	List<User> users;
+	final ObservableValue<User> currentUser;
+	final ObservableValue<List<Battle>> lastBattles;
 
 	private ExecutorService bgThread = Executors.newCachedThreadPool(new ThreadFactory() {
 
@@ -57,32 +76,22 @@ public class LeaderBoardPane {
 		}
 	});
 
-	public LeaderBoardPane(ObservableValue<GameConfig> config, EnnemiesLink ennemiesLink, LeaderboardApi leaderboardApi) {
+	
+	public LeaderBoardPane(ObservableValue<List<User>> usersList,  ObservableValue<User> currentUser, EnnemiesLink ennemiesLink, ObservableValue<List<Battle>> lastBattles) {
 		this.ennemiesLink = ennemiesLink;
-		this.leaderboardApi = leaderboardApi;
+		this.currentUser = currentUser;
+		this.lastBattles = lastBattles;
 		this.model = new BoardModel();
-		config.addPropertyChangeListener(evt -> bgThread.execute(() -> majLeaderboard(config.getValue())));
+		lastBattles.addPropertyChangeListener(l -> SwingUtilities.invokeLater(() -> model.fireTableDataChanged()));
+		usersList.addPropertyChangeListener(e -> bgThread.execute(() -> majRows(usersList.getValue())));
 	}
 
-	void majLeaderboard(GameConfig config) {
-		if (config == null) {
-			users = new ArrayList<>();
-			model.fireTableDataChanged();
-			return;
-		}
-		Call<SuccessLeaderboard> load = this.leaderboardApi.load(new LeaderboardParam(config));
-		try {
-			Response<SuccessLeaderboard> execute = load.execute();
-			SuccessLeaderboard body = execute.body();
-			Leaderboard success = body.getSuccess();
-			users = success.getUsers();
-			model.fireTableDataChanged();
 
-			if (users.size() > 0) {
-				preloadAvatars();
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
+	private void majRows(List<User> v) {
+		users = v;
+		SwingUtilities.invokeLater(() -> model.fireTableDataChanged());
+		if (users.size() > 0) {
+			preloadAvatars();
 		}
 	}
 
@@ -109,15 +118,17 @@ public class LeaderBoardPane {
 				try {
 					User userl = users.get(user_i$);
 					if (userl.getCodingamer() == null) {
-						
+						copyRessourcesAvatar("./avatars/avatar_boss_wood.png", "images/league_boss_wood.png");
+						copyRessourcesAvatar("./avatars/avatar_boss_bronze.png", "images/league_boss_bronze.png");
+						copyRessourcesAvatar("./avatars/avatar_boss_silver.png", "images/league_boss_silver.png");
+						copyRessourcesAvatar("./avatars/avatar_boss_gold.png", "images/league_boss_gold.png");
+						SwingUtilities.invokeLater(() -> model.fireTableCellUpdated(user_i$, 1));
 						return;
 					}
 					if (userl.getCodingamer().getAvatar() == null) {
 						final File file = new File("./avatars/avatarNull.png");
 						if (!file.exists()) {
-							URL url = new URL("https://static.codingame.com/common/images/img_general_avatar.e40ca637.png"); // navigation_avatar
-							Files.copy(url.openStream(), file.toPath());
-							https: // static.codingame.com/common/images/img_general_avatar.e40ca637.png
+							copyRessourcesAvatar("./avatars/avatarNull.png", "images/avatarNull.png");
 							for (int j = 0; j < users.size(); j++) {
 								if (users.get(j).getCodingamer().getAvatar() == null) {
 									SwingUtilities.invokeLater(() -> model.fireTableCellUpdated(user_i$, 1)); 
@@ -150,8 +161,78 @@ public class LeaderBoardPane {
 		avatarLoader.shutdown();
 	}
 
+	private void copyRessourcesAvatar(String dest, String src) throws IOException {
+		final File file = new File(dest);
+		URL resource = getClass().getClassLoader().getResource("./"+src);
+		if (!file.exists()) {
+			Files.copy(resource.openStream(), file.toPath());
+		}
+	}
+
 	public JComponent panel() {
-		return scroll;
+		JPanel res = new JPanel(new GridBagLayout());
+		
+		JScrollBar r = new JScrollBar() {
+
+			private static final long serialVersionUID = 6262119679761475240L;
+			
+			final Color brighter = ME_COLOR.brighter();
+			
+			@Override
+			protected void paintComponent(Graphics g) {
+				super.paintComponent(g);
+				int p = -1;
+				if (users == null || currentUser.value == null) {
+					return;
+				}
+				for (int i = 0; i < users.size(); i++) {
+					if (users.get(i)!=null && users.get(i).getPseudo() != null && users.get(i).getPseudo().equals(currentUser.value.getPseudo())) {
+						p = i;
+						break;
+					}
+				}
+				if (p != -1) {
+					int size = users.size();
+					Dimension s = getSize();
+					g.setColor(ME_COLOR);
+					g.fillRect(1, s.height*p/size - 4, s.width-2, 8);
+					g.setColor(brighter);
+					g.fillRect(2, s.height*p/size - 3, s.width-4, 6);
+					
+				}
+			}
+			
+		};
+		r.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				int p = -1;
+				if (users == null || currentUser.value == null) {
+					return;
+				}
+				for (int i = 0; i < users.size(); i++) {
+					if (users.get(i)!=null && users.get(i).getPseudo() != null && users.get(i).getPseudo().equals(currentUser.value.getPseudo())) {
+						p = i;
+						break;
+					}
+				}
+				if (p != -1) {
+					int size = users.size();
+					int y = e.getY();
+					Dimension s = r.getSize();
+					
+					if (y > s.height*p/size - 4 && y < s.height*p/size + 4) {
+						r.getModel().setValue(Math.max(r.getMinimum(), Math.min(r.getMaximum()-r.getModel().getExtent(), (r.getMaximum()-r.getMinimum())*p/size - r.getModel().getExtent()/2)));
+					}
+				}
+				
+				super.mouseReleased(e);
+			}
+		});
+		scroll.setVerticalScrollBar(r);
+		//res.add(r, new GridBagConstraints(0, 0, 1, 1, 100., 1., GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0,0,0,0), 5, 0));
+		res.add(scroll, new GridBagConstraints(1, 0, 1, 1, 100., 1., GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0,0,0,0), 0, 0));
+		return res;
 	}
 
 	public void buildPane() {
@@ -160,21 +241,46 @@ public class LeaderBoardPane {
 		DefaultTableCellRenderer pyjama = new DefaultTableCellRenderer() {
 
 			private static final long serialVersionUID = -40468109924609093L;
-			private final Color BG_COLOR = new Color(0xeeeefe);
-
+			
 			@Override
 			public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-				final Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-				c.setBackground(row % 2 == 0 ? BG_COLOR : Color.WHITE);
-				if (isSelected) {
-					c.setBackground(row % 2 == 0 ? BG_COLOR.darker() : Color.LIGHT_GRAY);
+				Object value$ = value;
+				if (value != null && table.convertColumnIndexToModel(column) == 4) {
+					value$ = value + "%";
+					
+				}
+				
+				final Component c = super.getTableCellRendererComponent(table, value$, isSelected, hasFocus, row, column);
+				c.setBackground(row % 2 == 1 ? BG_COLOR : Color.WHITE);
+				c.setFont(c.getFont().deriveFont(Font.PLAIN));
+				
+				User user = users.get(table.convertRowIndexToModel(row));
+				
+				if (user.getPseudo() != null && currentUser.value != null && user.getPseudo().equals(currentUser.value.getPseudo())) {
+					c.setFont(c.getFont().deriveFont(Font.BOLD));
+					if (isSelected) {
+						c.setBackground(ME_COLOR.darker());
+					}
+					else {
+						c.setBackground(ME_COLOR);
+					}
+				}
+				else if (isSelected) {
+					c.setBackground(row % 2 == 1 ? BG_COLOR.darker() : Color.LIGHT_GRAY);
+				}
+				if (value != null && table.convertColumnIndexToModel(column) == 4) {
+					Integer va = (Integer) value;
+					((JLabel) c).setBackground(new Color((int) (255-(va)/100.*255),(int) (va/100.*240), (int) Math.max(30, Math.min(255, (128-Math.abs(va-50.)/50.*255)))).brighter());
 				}
 				((JComponent) c).setToolTipText(null);
 				
 				if (table.convertColumnIndexToModel(column) == 1) {
-					final String avatarId = avatar(users.get(table.convertRowIndexToModel(row)));
+					final String avatarId = avatar(user);
+					if (avatarId.startsWith("_boss")) {
+						c.setFont(c.getFont().deriveFont(Font.ITALIC));
+					}
 					final ImageIcon icon = new ImageIcon("./avatars/avatar" + avatarId + ".png");
-					Image scaledInstance = icon.getImage().getScaledInstance(16, 16, Image.SCALE_FAST);
+					Image scaledInstance = icon.getImage().getScaledInstance(16, 16, Image.SCALE_SMOOTH);
 					((JLabel) c).setIcon(new ImageIcon(scaledInstance));
 					((JLabel) c).setToolTipText("<html><img src=\"file:./avatars/avatar"+ avatarId + ".png\" height=\"50\" width=\"50\"></html>");
 					
@@ -185,7 +291,24 @@ public class LeaderBoardPane {
 			}
 
 			private String avatar(User user) {
-				String avatarId = user.getCodingamer().getAvatar();
+				Codingamer codingamer = user.getCodingamer();
+				if (codingamer == null) {
+					if (user.getLeague().getDivisionIndex() >= 4) {
+						return "_boss_gold";
+					}
+					if (user.getLeague().getDivisionIndex() == 3) {
+						return "_boss_silver";
+					}
+					if (user.getLeague().getDivisionIndex() == 2) {
+						return "_boss_bronze";
+					}
+					if (user.getLeague().getDivisionIndex() <= 1) {
+						return "_boss_wood";
+					}
+					return "Null";
+					
+				}
+				String avatarId = codingamer.getAvatar();
 				return (avatarId != null ? avatarId : "Null");
 			}
 		};
@@ -200,17 +323,32 @@ public class LeaderBoardPane {
 		board.getColumnModel().getColumn(2).setPreferredWidth(80);
 	    
 		board.addMouseListener(new MouseAdapter() {
+			
+			@SuppressWarnings("serial")
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				if (e.getClickCount() == 2) {
 					int row = board.convertRowIndexToModel(board.rowAtPoint(e.getPoint()));
 					User user = users.get(row);
+					if (ennemiesLink != null)
 					ennemiesLink.add(user.getPseudo(), user.getAgentId());
+				}
+				if (ennemiesLink != null && e.isPopupTrigger()) {
+					int row = board.convertRowIndexToModel(board.rowAtPoint(e.getPoint()));
+					User user = users.get(row);
+					JPopupMenu pop = new JPopupMenu();
+					pop.add(new JMenuItem(new AbstractAction("Add to configuration") {
+						
+						@Override
+						public void actionPerformed(ActionEvent ev) {
+							ennemiesLink.add(user.getPseudo(), user.getAgentId());
+						}
+					}));
+					pop.show(board, e.getX(), e.getY());
 				}
 			}
 		});
 		scroll = new JScrollPane(board);
-
 	}
 
 	class BoardModel extends AbstractTableModel {
@@ -228,6 +366,12 @@ public class LeaderBoardPane {
 				return "Score";
 			case 3:
 				return "AgentId";
+			case 4:
+				return "WinRate";
+			case 5:
+				return "W / D / L";
+			case 6:
+				return "Total";
 
 			default:
 				return "";
@@ -245,6 +389,12 @@ public class LeaderBoardPane {
 				return Double.class;
 			case 3:
 				return Integer.class;
+			case 4:
+				return Integer.class;
+			case 5:
+				return String.class;
+			case 6:
+				return Integer.class;
 
 			default:
 				return Object.class;
@@ -258,21 +408,70 @@ public class LeaderBoardPane {
 
 		@Override
 		public int getColumnCount() {
-			return 4;
+			return 7;
 		}
 
 		@Override
 		public Object getValueAt(int rowIndex, int columnIndex) {
 			User user = users.get(rowIndex);
+			
 			switch (columnIndex) {
 			case 0:
 				return user.getRank();
 			case 1:
-				return user.getPseudo();
+				return user.getPseudo() != null ? user.getPseudo() : "";
 			case 2:
 				return user.getScore();
 			case 3:
 				return user.getAgentId();
+			case 4: {
+				User userId = currentUser.getValue();
+				if (userId == null || userId.getAgentId() == user.getAgentId()) {
+					return null;
+				}
+				List<Battle> value = lastBattles.getValue();
+				if (value== null || value.size() == 0) {
+					return null;
+				}
+				List<Battle> matchs = value.stream().filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == user.getAgentId())).collect(Collectors.toList());
+				if (matchs.size() == 0) {
+					return null;
+				}
+				return (int) ((matchs.stream().filter(m -> m.position(userId) < m.position(user)).count()*100) / matchs.size());
+			}
+			case 5: {
+				User userId = currentUser.getValue();
+				if (userId == null || userId.getAgentId() == user.getAgentId()) {
+					return null;
+				}
+				List<Battle> value = lastBattles.getValue();
+				if (value== null || value.size() == 0) {
+					return null;
+				}
+				List<Battle> matchs = value.stream().filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == user.getAgentId())).collect(Collectors.toList());
+				if (matchs.size() == 0) {
+					return null;
+				}
+				return ((int) ((matchs.stream().filter(m -> m.position(userId) < m.position(user)).count()) )) +" / " + 
+				(int) ((matchs.stream().filter(m -> m.position(userId) == m.position(user)).count()) ) + " / " +
+				(int) ((matchs.stream().filter(m -> m.position(userId) > m.position(user)).count()) );
+			}
+			case 6:
+			{
+				User userId = currentUser.getValue();
+				if (userId == null || userId.getAgentId() == user.getAgentId()) {
+					return null;
+				}
+				List<Battle> value = lastBattles.getValue();
+				if (value== null || value.size() == 0) {
+					return null;
+				}
+				List<Battle> matchs = value.stream().filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == user.getAgentId())).collect(Collectors.toList());
+				if (matchs.size() == 0) {
+					return null;
+				}
+				return matchs.size();
+			}
 			}
 			return null;
 		}

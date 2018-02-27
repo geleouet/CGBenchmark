@@ -2,6 +2,8 @@ package fr.egaetan.cgbench.api;
 
 import java.util.ArrayList;
 
+import fr.svivien.cgbenchmark.model.config.AccountConfiguration;
+
 public class LeagueLeaderBoardParam extends ArrayList<Object> {
 
 	static class DivisionParam {
@@ -39,5 +41,5 @@ public class LeagueLeaderBoardParam extends ArrayList<Object> {
 		add(null);
 		add(null);
 	}
-	
+
 }
