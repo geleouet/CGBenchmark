@@ -21,6 +21,48 @@
 			]
 		},
 		{
+			"name": "fantastic-bits",
+			"minOpponents": 1,
+			"maxOpponents": 1,
+			"seeds": [
+				{
+					"name": "seed"
+				}
+			]
+		},
+		{
+			"name": "hypersonic",
+			"minOpponents": 1,
+			"maxOpponents": 3,
+			"seeds": [
+				{
+					"name": "seed"
+				},
+				{
+					"name": "boxes"
+				}
+			]
+		},
+		{
+			"name": "great-escape",
+			"minOpponents": 1,
+			"maxOpponents": 2,
+			"seeds": [
+				{
+					"name": "height"
+				},
+				{
+					"name": "positions"
+				},
+				{
+					"name": "width"
+				},
+				{
+					"name": "symmetric"
+				}
+			]
+		},
+		{
 			"name": "game-of-drones",
 			"global_name": "game-of-drone",
 			"minOpponents": 1,
