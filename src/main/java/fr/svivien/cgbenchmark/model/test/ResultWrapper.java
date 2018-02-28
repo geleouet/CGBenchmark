@@ -14,7 +14,7 @@ import java.util.*;
  */
 public class ResultWrapper {
 
-    private class Dominance {
+    static class Dominance {
         int win, lose, draw, total;
     }
 

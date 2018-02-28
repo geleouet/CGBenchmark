@@ -28,6 +28,11 @@ public class SessionLogIn {
 	private static final Log LOG = LogFactory.getLog(SessionLogIn.class);
 
 	public void retrieveAccountCookieAndSession(AccountConfiguration accountCfg, String multiName) {
+		if (accountCfg.getAccountIde() != null) {
+			// already logged in
+			return; 
+		}
+		
 	    LOG.info("Retrieving cookie and session for account " + accountCfg.getAccountName());
 	
 	    OkHttpClient client = new Builder().readTimeout(600, TimeUnit.SECONDS).build();

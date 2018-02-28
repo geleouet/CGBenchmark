@@ -11,6 +11,16 @@
 			]
 		},
 		{
+			"name": "tic-tac-toe",
+			"minOpponents": 1,
+			"maxOpponents": 1,
+			"seeds": [
+				{
+					"name": "seed"
+				}
+			]
+		},
+		{
 			"name": "code4life",
 			"minOpponents": 1,
 			"maxOpponents": 1,

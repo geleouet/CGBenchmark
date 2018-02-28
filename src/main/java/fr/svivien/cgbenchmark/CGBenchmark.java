@@ -15,8 +15,10 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
@@ -91,7 +93,15 @@ public class CGBenchmark {
         // Launching tests
         for (CodeConfiguration codeCfg : globalConfiguration.getCodeConfigurationList()) {
 
-            ExecutorService threadPool = Executors.newFixedThreadPool(accountConsumerList.size());
+            ExecutorService threadPool = Executors.newFixedThreadPool(accountConsumerList.size(), new ThreadFactory() {
+				
+            	AtomicInteger counter = new AtomicInteger(0);
+            	
+				@Override
+				public Thread newThread(Runnable r) {
+					return new Thread(r, "BenchmarkConsumer-"+counter.incrementAndGet());
+				}
+			});
 
             Path p = Paths.get(codeCfg.getSourcePath());
             String codeName = p.getFileName().toString();

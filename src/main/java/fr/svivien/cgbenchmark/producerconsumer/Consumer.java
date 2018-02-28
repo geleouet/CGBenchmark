@@ -113,7 +113,10 @@ public class Consumer implements Runnable {
         try {
             PlayResponse playResponse = call.execute().body();
             dumpLogForPlay(test, playResponse);
-            return new TestOutput(test, playResponse);
+            TestOutput testOutput = new TestOutput(test, playResponse);
+            
+            
+			return testOutput;
         } catch (IOException | RuntimeException e) {
             TestOutput to = new TestOutput(test, null);
             return to;
