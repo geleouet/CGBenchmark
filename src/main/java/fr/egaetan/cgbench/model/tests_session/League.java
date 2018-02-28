@@ -32,4 +32,20 @@ public class League {
         this.openingLeaguesCount = openingLeaguesCount;
     }
 
+    public String getDivisionName() {
+    	switch (divisionIndex) {
+    	case 5:
+    		return "Legend";
+    	case 4:
+    		return "Gold";
+    	case 3:
+    		return "Silver";
+    	case 2:
+    		return "Bronze";
+    	case 1:
+    		return "Wood";
+    	}
+    	return "Wood";
+    }
+
 }

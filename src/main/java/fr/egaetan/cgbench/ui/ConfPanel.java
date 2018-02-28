@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -71,6 +72,8 @@ import fr.svivien.cgbenchmark.model.config.GlobalConfiguration;
 public class ConfPanel {
 
 	private static final Log LOG = LogFactory.getLog(Gui.class);
+
+	final Random random = new Random();
 	final MultisConfig multisConfig;
 
 	public JPanel configPanel;
@@ -87,7 +90,7 @@ public class ConfPanel {
 
 	private int nbPlayer;
 
-	Runnable updateEnnemies[] = new Runnable[50];
+	Runnable updateEnnemies[] = new Runnable[100];
 
 	List<String> seedsOrigine = new ArrayList<>();
 	Runnable updateSeeds;
@@ -237,23 +240,45 @@ public class ConfPanel {
 							String name = sconfig.getName();
 							seedsPane.add(new JLabel(name), new GridBagConstraints(0, i * (seedsConfig.size() + 1) + j, 1, 1, 1., 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(01, 01, 0, 0), 0, 0));
 							JTextField tf = new JTextField(seedsParam.getOrDefault(name, ""));
-							tf.addActionListener(new ActionListener() {
-
-								@Override
-								public void actionPerformed(ActionEvent e) {
-									seedsParam.put(name, tf.getText());
-									StringBuilder sb = new StringBuilder();
-									for (int k = 0; k < seedsConfig.size(); k++) {
-										SeedParamConfig config_k = seedsConfig.get(k);
-										if (k != 0) {
-											sb.append("\n");
-										}
-										sb.append(config_k.getName() + "=" + seedsParam.getOrDefault(config_k.getName(), ""));
+							ActionListener updateListener = e -> {
+								seedsParam.put(name, tf.getText());
+								StringBuilder sb = new StringBuilder();
+								for (int k = 0; k < seedsConfig.size(); k++) {
+									SeedParamConfig config_k = seedsConfig.get(k);
+									if (k != 0) {
+										sb.append("\n");
 									}
-									seedsOrigine.set(i$, sb.toString());
+									sb.append(config_k.getName() + "=" + seedsParam.getOrDefault(config_k.getName(), ""));
+								}
+								seedsOrigine.set(i$, sb.toString());
+							};
+							tf.addActionListener(updateListener);
+							tf.getDocument().addDocumentListener(new DocumentListener() {
+								
+								@Override
+								public void removeUpdate(DocumentEvent e) {
+									updateListener.actionPerformed(null);
+								}
+								
+								@Override
+								public void insertUpdate(DocumentEvent e) {
+									updateListener.actionPerformed(null);
+								}
+								
+								@Override
+								public void changedUpdate(DocumentEvent e) {
+									updateListener.actionPerformed(null);
 								}
 							});
+							
 							seedsPane.add(tf, new GridBagConstraints(1, i * (seedsConfig.size() + 1) + j, 1, 1, 100., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(01, 01, 0, 0), 0, 0));
+							seedsPane.add(new JButton(new AbstractAction("!") {
+								
+								@Override
+								public void actionPerformed(ActionEvent e) {
+									tf.setText(""+ (random.nextInt(900_000_000)+100_000_000));
+								}
+							}), new GridBagConstraints(2, i * (seedsConfig.size() + 1) + j, 1, 1, 1., 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(01, 01, 0, 0), 0, 0));
 						}
 						JButton rf = new JButton(new AbstractAction("X") {
 
@@ -263,7 +288,7 @@ public class ConfPanel {
 								updateSeeds.run();
 							}
 						});
-						seedsPane.add(rf, new GridBagConstraints(2, i * (seedsConfig.size() + 1), 1, 1, 1., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(01, 01, 0, 0), 0, 0));
+						seedsPane.add(rf, new GridBagConstraints(3, i * (seedsConfig.size() + 1), 1, 1, 1., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(01, 01, 0, 0), 0, 0));
 						seedsPane.add(new JSeparator(SwingConstants.HORIZONTAL), new GridBagConstraints(0, i * (seedsConfig.size() + 1) + seedsConfig.size(), 3, 1, 1., 1, GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(01, 05, 0, 05), 0, 0));
 
 					}
@@ -367,11 +392,11 @@ public class ConfPanel {
 		globalConfig.add(new JLabel("Player position:"), new GridBagConstraints(0, 2, 1, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
 		globalConfig.add(playerPosition, new GridBagConstraints(1, 2, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(05, 05, 0, 05), 0, 0));
 
-		minEnnemies = new JComboBox<>(new Integer[] { 1, 2, 3, 4 });
+		minEnnemies = new JComboBox<>(new Integer[] { 1, 2, 3 });
 		globalConfig.add(new JLabel("Min. Ennemies:"), new GridBagConstraints(0, 3, 1, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
 		globalConfig.add(minEnnemies, new GridBagConstraints(1, 3, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(05, 05, 0, 05), 0, 0));
 
-		maxEnnemies = new JComboBox<>(new Integer[] { 1, 2, 3, 4 });
+		maxEnnemies = new JComboBox<>(new Integer[] { 1, 2, 3 });
 		globalConfig.add(new JLabel("Max. Ennemies:"), new GridBagConstraints(0, 4, 1, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
 		globalConfig.add(maxEnnemies, new GridBagConstraints(1, 4, 1, 1, 10., 1, GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(05, 05, 0, 05), 0, 0));
 
@@ -480,7 +505,21 @@ public class ConfPanel {
 					code_configs.remove(code_tab$);
 					updateCodesConfig();
 				}
-			}), new GridBagConstraints(0, 0, 2, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
+			}), new GridBagConstraints(0, 0, 1, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
+			codeConfig.add(new JButton(new AbstractAction("Share ennemies config") {
+				
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					CodeConfiguration current = code_configs.get(code_tab$);
+					CodeConfiguration clone= new CodeConfiguration();
+					clone.setLanguage(current.getLanguage());
+					clone.setNbReplays(current.getNbReplays());
+					clone.setSourcePath(current.getSourcePath());
+					clone.setEnemies(current.getEnemies());
+					code_configs.add(clone);
+					updateCodesConfig();
+				}
+			}), new GridBagConstraints(1, 0, 1, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));
 			
 			JTextField path = new JTextField();
 			codeConfig.add(new JLabel("Path:"), new GridBagConstraints(0, 1, 1, 1, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(05, 05, 0, 05), 0, 0));

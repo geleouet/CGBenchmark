@@ -17,6 +17,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -144,7 +145,7 @@ public class LeaderBoardPane {
 					SwingUtilities.invokeLater(() -> model.fireTableCellUpdated(user_i$, 1)); 
 				}
 				catch (IOException e) {
-					e.printStackTrace();
+					// hide exception
 				}
 			});
 			
@@ -195,6 +196,7 @@ public class LeaderBoardPane {
 			
 		};
 		r.addMouseListener(new MouseAdapter() {
+			
 			@Override
 			public void mouseReleased(MouseEvent e) {
 				int p = -1;
@@ -216,12 +218,9 @@ public class LeaderBoardPane {
 						r.getModel().setValue(Math.max(r.getMinimum(), Math.min(r.getMaximum()-r.getModel().getExtent(), (r.getMaximum()-r.getMinimum())*p/size - r.getModel().getExtent()/2)));
 					}
 				}
-				
-				super.mouseReleased(e);
 			}
 		});
 		scroll.setVerticalScrollBar(r);
-		//res.add(r, new GridBagConstraints(0, 0, 1, 1, 100., 1., GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0,0,0,0), 5, 0));
 		res.add(scroll, new GridBagConstraints(1, 0, 1, 1, 100., 1., GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0,0,0,0), 0, 0));
 		return res;
 	}
@@ -229,6 +228,9 @@ public class LeaderBoardPane {
 	public void buildPane() {
 		JTable board = new JTable(model);
 		board.setAutoCreateRowSorter(true);
+		
+		hideColumns(board);
+		
 		DefaultTableCellRenderer pyjama = new DefaultTableCellRenderer() {
 
 			private static final long serialVersionUID = -40468109924609093L;
@@ -317,13 +319,7 @@ public class LeaderBoardPane {
 			
 			@SuppressWarnings("serial")
 			@Override
-			public void mouseClicked(MouseEvent e) {
-				if (e.getClickCount() == 2) {
-					int row = board.convertRowIndexToModel(board.rowAtPoint(e.getPoint()));
-					User user = users.get(row);
-					if (ennemiesLink != null)
-					ennemiesLink.add(user.getPseudo(), user.getAgentId());
-				}
+			public void mouseReleased(MouseEvent e) {
 				if (ennemiesLink != null && e.isPopupTrigger()) {
 					int row = board.convertRowIndexToModel(board.rowAtPoint(e.getPoint()));
 					User user = users.get(row);
@@ -338,9 +334,24 @@ public class LeaderBoardPane {
 					pop.show(board, e.getX(), e.getY());
 				}
 			}
+			
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				if (e.getClickCount() == 2) {
+					int row = board.convertRowIndexToModel(board.rowAtPoint(e.getPoint()));
+					User user = users.get(row);
+					if (ennemiesLink != null) {
+						ennemiesLink.add(user.getPseudo(), user.getAgentId());
+					}
+				}
+			}
 		});
 		scroll = new JScrollPane(board);
 	}
+
+
+	@SuppressWarnings("unused")
+	protected void hideColumns(JTable board) { /* Nothing here */}
 
 	class BoardModel extends AbstractTableModel {
 
@@ -362,6 +373,8 @@ public class LeaderBoardPane {
 			case 5:
 				return "W / D / L";
 			case 6:
+				return "%95";
+			case 7:
 				return "Total";
 
 			default:
@@ -385,6 +398,8 @@ public class LeaderBoardPane {
 			case 5:
 				return String.class;
 			case 6:
+				return String.class;
+			case 7:
 				return Integer.class;
 
 			default:
@@ -398,8 +413,13 @@ public class LeaderBoardPane {
 		}
 
 		@Override
+		public boolean isCellEditable(int row, int column) {
+			return false;
+		}
+		
+		@Override
 		public int getColumnCount() {
-			return 7;
+			return 8;
 		}
 
 		@Override
@@ -424,11 +444,11 @@ public class LeaderBoardPane {
 				if (value== null || value.size() == 0) {
 					return null;
 				}
-				List<Battle> matchs = value.stream().filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == user.getAgentId())).collect(Collectors.toList());
+				List<Battle> matchs = matches(user, value);
 				if (matchs.size() == 0) {
 					return null;
 				}
-				return (int) ((matchs.stream().filter(m -> m.position(userId) < m.position(user)).count()*100) / matchs.size());
+				return (int) Math.round((matchs.stream().filter(m -> m.position(userId) < m.position(user)).count()*100.) / matchs.size());
 			}
 			case 5: {
 				User userId = currentUser.getValue();
@@ -439,7 +459,7 @@ public class LeaderBoardPane {
 				if (value== null || value.size() == 0) {
 					return null;
 				}
-				List<Battle> matchs = value.stream().filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == user.getAgentId())).collect(Collectors.toList());
+				List<Battle> matchs = matches(user, value);
 				if (matchs.size() == 0) {
 					return null;
 				}
@@ -447,7 +467,35 @@ public class LeaderBoardPane {
 				(int) ((matchs.stream().filter(m -> m.position(userId) == m.position(user)).count()) ) + " / " +
 				(int) ((matchs.stream().filter(m -> m.position(userId) > m.position(user)).count()) );
 			}
-			case 6:
+			case 6: {
+				User userId = currentUser.getValue();
+				if (userId == null || userId.getAgentId() == user.getAgentId()) {
+					return null;
+				}
+				List<Battle> value = lastBattles.getValue();
+				if (value== null || value.size() == 0) {
+					return null;
+				}
+				List<Battle> matchs = matches(user, value);
+				if (matchs.size() == 0) {
+					return null;
+				}
+				double w = (int) ((matchs.stream().filter(m -> m.position(userId) < m.position(user)).count()) );
+				double n = matchs.size();
+				
+				double m = w/n;
+				
+				double sigmamin = Math.sqrt(w/(n+1) - (w/(n+1))*(w/(n+1)));
+				double sigmamax = Math.sqrt((w+1)/(n+1) - ((w+1)/(n+1))*((w+1)/(n+1)));
+
+				double min = Math.max(0, m - 1.96*sigmamin / Math.sqrt(n+1));
+				double max = Math.min(1, m + 1.96*sigmamax / Math.sqrt(n+1));
+				
+				int mini = (int) Math.round(100*min);
+				int maxi = (int) Math.round(100*max);
+				return "[" + mini+"%, "+maxi+"%]";
+			}
+			case 7:
 			{
 				User userId = currentUser.getValue();
 				if (userId == null || userId.getAgentId() == user.getAgentId()) {
@@ -457,14 +505,26 @@ public class LeaderBoardPane {
 				if (value== null || value.size() == 0) {
 					return null;
 				}
-				List<Battle> matchs = value.stream().filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == user.getAgentId())).collect(Collectors.toList());
+				List<Battle> matchs = matches(user, value);
 				if (matchs.size() == 0) {
 					return null;
 				}
 				return matchs.size();
 			}
+			
 			}
 			return null;
+		}
+
+		private List<Battle> matches(User user, List<Battle> value) {
+			User userId = currentUser.getValue();
+			if (userId == null) {
+				return Collections.emptyList();
+			}
+			return value.stream()
+					.filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == userId.getAgentId()))
+					.filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == user.getAgentId()))
+					.collect(Collectors.toList());
 		}
 
 	}

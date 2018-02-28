@@ -20,7 +20,7 @@ import retrofit2.Response;
 
 public class LastBattlesService implements LastBattlesLoader {
 	
-	private static final int DELAY_BETWEEN_REQUESTS = 30;
+	private static final int DELAY_BETWEEN_REQUESTS = 25;
 
 	private static final Log LOG = LogFactory.getLog(LastBattlesService.class);
 
@@ -31,6 +31,7 @@ public class LastBattlesService implements LastBattlesLoader {
 	String gameName = null;
 	List<Battle> alreadyLoaded = new ArrayList<>();
 	ObservableValue<List<Battle>> observable = new ObservableValue<>();
+	ObservableValue<Double> progress = new ObservableValue<>();
 	
 	long lastLoad;
 	
@@ -39,8 +40,14 @@ public class LastBattlesService implements LastBattlesLoader {
 		this.currentGame = currentGame;
 		this.currentLogin = currentLogin;
 		this.testBattlesApi = testBattlesApi;
+		progress.setValue(1.);
 	}
 
+	@Override
+	public ObservableValue<Double> progress() {
+		return progress;
+	}
+	
 
 	@Override
 	public ObservableValue<List<Battle>> lastBattles() {
@@ -64,9 +71,11 @@ public class LastBattlesService implements LastBattlesLoader {
 						if (execute.isSuccess()) {
 							SuccessLastBattles body = execute.body();
 							if (body.getSuccess() != null) {
+								progress.setValue(body.getSuccess().getProgress());
 								List<Battle> lastBattles = body.getSuccess().getLastBattles();
 								if (lastBattles.size() > 1) {
 									lastBattles.removeAll(alreadyLoaded);
+									System.out.println("Loaded " + lastBattles.size());
 									alreadyLoaded.addAll(lastBattles);
 									
 									observable.setValue(alreadyLoaded);

@@ -8,4 +8,6 @@ import fr.egaetan.cgbench.ui.ObservableValue;
 public interface LastBattlesLoader {
 	
 	ObservableValue<List<Battle>> lastBattles();
+
+	ObservableValue<Double> progress();
 }

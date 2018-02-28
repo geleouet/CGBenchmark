@@ -1,6 +1,13 @@
 package fr.egaetan.cgbench;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Image;
+import java.awt.Insets;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -15,10 +22,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JSplitPane;
+import javax.swing.JTabbedPane;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
@@ -37,6 +49,7 @@ import fr.egaetan.cgbench.api.LeaderboardLeagueApi;
 import fr.egaetan.cgbench.api.TestSessionApi;
 import fr.egaetan.cgbench.model.config.GameConfig;
 import fr.egaetan.cgbench.model.config.MultisConfig;
+import fr.egaetan.cgbench.model.leaderboard.Battle;
 import fr.egaetan.cgbench.model.leaderboard.Leaderboard;
 import fr.egaetan.cgbench.model.leaderboard.SuccessLeaderboard;
 import fr.egaetan.cgbench.model.leaderboard.User;
@@ -47,6 +60,7 @@ import fr.egaetan.cgbench.services.LeaderBoardLoaderService;
 import fr.egaetan.cgbench.services.SearchAgentId;
 import fr.egaetan.cgbench.ui.BatchRun;
 import fr.egaetan.cgbench.ui.ConfPanel;
+import fr.egaetan.cgbench.ui.LastBattlesPane;
 import fr.egaetan.cgbench.ui.LeaderBoardPane;
 import fr.egaetan.cgbench.ui.ObservableValue;
 import fr.svivien.cgbenchmark.CGBenchmark;
@@ -90,7 +104,8 @@ public class Gui {
 	LastBattlesLoader lastBattlesService;
 	ObservableValue<User> current;
 	ObservableValue<List<User>> userList;
-	ScheduledExecutorService scheduler;		
+	ScheduledExecutorService scheduler;
+	private LastBattlesPane lastBattlesPane;		
 	
 	public Gui() {
 		currentGame = new ObservableValue<>();
@@ -103,24 +118,26 @@ public class Gui {
 
 	private void initListeners() {
 		scheduler = Executors.newScheduledThreadPool(1);
+		Runnable scheduledLeaderBoard = () -> {
+			AccountConfiguration accountConfiguration = currentLogin.getValue();
+			if (accountConfiguration == null) {
+				userList.setValue(Collections.emptyList());
+				return;
+			}
+			if (accountConfiguration.getAccountIde() == null) {
+				userList.setValue(Collections.emptyList());
+				return;
+			}
+			SuccessLeaderboard body = leaderboardService.load();
+			current.setValue(accountConfiguration.getUser());
+			Leaderboard success = body.getSuccess();
+			userList.setValue(success.getUsers());
+		};
 		currentLogin.addPropertyChangeListener(new PropertyChangeListener() {
 			
 			@Override
 			public void propertyChange(PropertyChangeEvent evt) {
-				AccountConfiguration accountConfiguration = currentLogin.getValue();
-				if (accountConfiguration == null) {
-					userList.setValue(Collections.emptyList());
-					return;
-				}
-				if (accountConfiguration.getAccountIde() == null) {
-					userList.setValue(Collections.emptyList());
-					return;
-				}
-				SuccessLeaderboard body = leaderboardService.load();
-				current.setValue(accountConfiguration.getUser());
-				Leaderboard success = body.getSuccess();
-				userList.setValue(success.getUsers());
-				scheduler.scheduleAtFixedRate(() -> this.propertyChange(evt), 60, 60, TimeUnit.SECONDS);
+				scheduledLeaderBoard.run();
 			}
 		});
 		userList.addPropertyChangeListener(new PropertyChangeListener() {
@@ -130,15 +147,16 @@ public class Gui {
 				lastBattlesService.lastBattles();
 			}
 		});
+		scheduler.scheduleAtFixedRate(scheduledLeaderBoard, 30, 30, TimeUnit.SECONDS);
 	}
 	
 	
 	private void initServices() {
 		HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
 		interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
-		OkHttpClient client = new OkHttpClient.Builder().addInterceptor(interceptor).readTimeout(600, TimeUnit.SECONDS).build();
+		//OkHttpClient client = new OkHttpClient.Builder().addInterceptor(interceptor).readTimeout(600, TimeUnit.SECONDS).build();
+		OkHttpClient client = new OkHttpClient.Builder().readTimeout(600, TimeUnit.SECONDS).build();
 		
-		//OkHttpClient client = new OkHttpClient.Builder().readTimeout(600, TimeUnit.SECONDS).build();
 		Retrofit retrofit = new Retrofit.Builder().client(client).baseUrl(Constants.CG_HOST).addConverterFactory(GsonConverterFactory.create()).build();
 		leaderboardApi = retrofit.create(LeaderboardApi.class);
 		leaderboardLeagueApi = retrofit.create(LeaderboardLeagueApi.class);
@@ -149,7 +167,7 @@ public class Gui {
 		lastBattlesService = new LastBattlesService(currentGame, currentLogin, testBattlesApi);
 	}
 	
-	private void load(String string) {
+	private void load(@SuppressWarnings("unused") String string) {
 		//confPane.loadConfig(string);
 	}
 
@@ -164,14 +182,13 @@ public class Gui {
 		confPane = new ConfPanel(multisConfig, new SearchAgentId(leaderboardApi), batchRunner(mainFrame), currentGame, currentLogin);
 		confPane.buildConfPane();
 		
-		leaderboardPane = new LeaderBoardPane(userList, current, confPane.ennemiesLink(), lastBattlesService.lastBattles());
-		leaderboardPane.buildPane();
+		JPanel arena = buildArenaPane();
 		
 		JSplitPane splittedConfig = new JSplitPane();
 		splittedConfig.setLeftComponent(confPane.confPanel());
 
 		JSplitPane splittedLdbrd = new JSplitPane();
-		splittedLdbrd.setRightComponent(leaderboardPane.panel());
+		splittedLdbrd.setRightComponent(arena);
 		splittedLdbrd.setLeftComponent(new JLabel("Main"));
 		
 		splittedConfig.setRightComponent(splittedLdbrd);
@@ -179,6 +196,88 @@ public class Gui {
 		mainFrame.getContentPane().add(splittedConfig, BorderLayout.CENTER);
 		mainFrame.pack();
 		mainFrame.setVisible(true);
+	}
+
+	private JPanel buildArenaPane() {
+		ObservableValue<List<Battle>> lastBattles = lastBattlesService.lastBattles();
+		leaderboardPane = new LeaderBoardPane(userList, current, confPane.ennemiesLink(), lastBattles);
+		leaderboardPane.buildPane();
+		
+		lastBattlesPane = new LastBattlesPane(lastBattles, userList, current);
+		lastBattlesPane.buildPane();
+		
+		JPanel arena = new JPanel(new GridBagLayout());
+		JLabel arenaClassement = new JLabel("#?");
+		arenaClassement.setFont(arenaClassement.getFont().deriveFont(arenaClassement.getFont().getSize() * 2.5f));
+		JLabel progressClassement = new JLabel("") {
+
+			private static final long serialVersionUID = 258371179814040775L;
+
+			@Override
+			protected void paintComponent(Graphics g) {
+				Double value = lastBattlesService.progress().getValue();
+				if (value == null || value >= 1.) {
+					// Nothing
+				}
+				else {
+					Dimension s = getSize();
+					g.setColor(new Color((int) Math.min(150, 100+value*100),(int) (90 + value * 100),(int) Math.min(255, 105 + value * 250)));
+					g.fillRect(0, 0, (int) (s.width*value), s.height);
+				}
+				super.paintComponent(g);
+			}
+		};
+		progressClassement.setHorizontalAlignment(SwingConstants.CENTER);
+		
+		progressClassement.setFont(progressClassement.getFont().deriveFont(progressClassement.getFont().getSize() * 1.5f));
+		lastBattlesService.progress().addPropertyChangeListener(new PropertyChangeListener() {
+			
+			@Override
+			public void propertyChange(PropertyChangeEvent evt) {
+				Double value = lastBattlesService.progress().getValue();
+				if (value == null || value >= 1.) {
+					progressClassement.setText("");
+				}
+				else {
+					progressClassement.setText("" + Math.round(value * 100)+"%");
+					progressClassement.setBorder(BorderFactory.createLineBorder(Color.darkGray, 1));
+				}
+			}
+		});
+		userList.addPropertyChangeListener(new PropertyChangeListener() {
+			
+			@Override
+			public void propertyChange(PropertyChangeEvent evt) {
+				List<User> users = userList.getValue();
+				int p = -1;
+				if (users == null || currentLogin.getValue() == null) {
+					return;
+				}
+				for (int i = 0; i < users.size(); i++) {
+					if (users.get(i)!=null && users.get(i).getPseudo() != null && users.get(i).getPseudo().equals(currentLogin.getValue().getAccountName())) {
+						p = i;
+						break;
+					}
+				}		
+				arenaClassement.setText("#" + (p+1)/* + " - "+ (users.get(p).getLeague()!= null ? users.get(p).getLeague().getDivisionName() : "")*/);
+				if (users.get(p).getLeague()!= null) {
+					ImageIcon icon = new ImageIcon(getClass().getResource("/images/league_"+users.get(p).getLeague().getDivisionName().toLowerCase()+".png"));
+					arenaClassement.setIcon(new ImageIcon(icon.getImage().getScaledInstance(32, 32, Image.SCALE_SMOOTH)));
+				}
+				else {
+					arenaClassement.setIcon(null);
+				}
+				
+			}
+		});
+		arena.add(arenaClassement, new GridBagConstraints(0, 0, 1, 1, 1, 0., GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(02, 10, 02, 10), 0, 0));
+		arena.add(progressClassement, new GridBagConstraints(1, 0, 1, 1, 1, 0., GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(02, 10, 02, 10), 0, 0));
+		
+		JTabbedPane arenaTabs = new JTabbedPane();
+		arenaTabs.add("Leaderboard",leaderboardPane.panel());
+		arenaTabs.add("LastBattles", lastBattlesPane.panel());
+		arena.add(arenaTabs, new GridBagConstraints(0, 1, 2, 1, 1, 1, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
+		return arena;
 	}
 
 	private BatchRun batchRunner(JFrame mainFrame) {
@@ -195,6 +294,9 @@ public class Gui {
 					return;
 				}
 				CGBenchmark bench = new CGBenchmark(config);
+				
+				// TODO Ajouter un tabPannel de résultat
+				
 				new Thread(() -> bench.launch(), "Batch-Run").start();
 			}
 		};
