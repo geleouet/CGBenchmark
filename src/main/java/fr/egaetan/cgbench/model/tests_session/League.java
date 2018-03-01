@@ -33,16 +33,17 @@ public class League {
     }
 
     public String getDivisionName() {
-    	switch (divisionIndex) {
-    	case 5:
+    	int division = divisionCount - divisionIndex;
+    	switch (division) {
+    	case 1:
     		return "Legend";
-    	case 4:
+    	case 2:
     		return "Gold";
     	case 3:
     		return "Silver";
-    	case 2:
+    	case 4:
     		return "Bronze";
-    	case 1:
+    	case 5:
     		return "Wood";
     	}
     	return "Wood";
