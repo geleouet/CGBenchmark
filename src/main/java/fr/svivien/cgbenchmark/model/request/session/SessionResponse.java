@@ -9,5 +9,6 @@ public class SessionResponse {
 
     public class SessionResponseSuccess {
         public String handle;
+        public String testSessionHandle;
     }
 }

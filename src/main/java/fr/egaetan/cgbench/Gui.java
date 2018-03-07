@@ -152,9 +152,9 @@ public class Gui {
 	
 	
 	private void initServices() {
-		HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
-		interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
-		//OkHttpClient client = new OkHttpClient.Builder().addInterceptor(interceptor).readTimeout(600, TimeUnit.SECONDS).build();
+//		HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
+//		interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+//		OkHttpClient client = new OkHttpClient.Builder().addInterceptor(interceptor).readTimeout(600, TimeUnit.SECONDS).build();
 		OkHttpClient client = new OkHttpClient.Builder().readTimeout(600, TimeUnit.SECONDS).build();
 		
 		Retrofit retrofit = new Retrofit.Builder().client(client).baseUrl(Constants.CG_HOST).addConverterFactory(GsonConverterFactory.create()).build();

@@ -11,6 +11,16 @@
 			]
 		},
 		{
+			"name": "botters-of-the-galaxy",
+			"minOpponents": 1,
+			"maxOpponents": 4,
+			"seeds": [
+				{
+					"name": "seed"
+				}
+			]
+		},
+		{
 			"name": "tic-tac-toe",
 			"minOpponents": 1,
 			"maxOpponents": 1,
