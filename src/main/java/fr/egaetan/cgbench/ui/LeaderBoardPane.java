@@ -49,6 +49,8 @@ public class LeaderBoardPane {
 	final static Color BG_COLOR = new Color(0xeeeefe);
 	final static Color ME_COLOR = new Color(0xf9d140);
 
+	final static Color BOSS_COLOR = new Color(0xe5829e);
+
 	private JScrollPane scroll;
 	private BoardModel model;
 	EnnemiesLink ennemiesLink;
@@ -256,6 +258,15 @@ public class LeaderBoardPane {
 					}
 					else {
 						c.setBackground(ME_COLOR);
+					}
+				}
+				else if (user.getCodingamer() == null) {
+					c.setFont(c.getFont().deriveFont(Font.BOLD));
+					if (isSelected) {
+						c.setBackground(BOSS_COLOR.darker());
+					}
+					else {
+						c.setBackground(BOSS_COLOR);
 					}
 				}
 				else if (isSelected) {
