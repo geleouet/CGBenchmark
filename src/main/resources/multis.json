@@ -11,6 +11,26 @@
 			]
 		},
 		{
+			"name": "code-royale",
+			"minOpponents": 1,
+			"maxOpponents": 1,
+			"seeds": [
+				{
+					"name": "seed"
+				}
+			]
+		},
+		{
+			"name": "hackathlon",
+			"minOpponents": 1,
+			"maxOpponents": 1,
+			"seeds": [
+				{
+					"name": "seed"
+				}
+			]
+		},
+		{
 			"name": "botters-of-the-galaxy",
 			"minOpponents": 1,
 			"maxOpponents": 4,
