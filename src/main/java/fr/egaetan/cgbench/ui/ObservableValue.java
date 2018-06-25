@@ -24,6 +24,9 @@ public class ObservableValue<T> {
 		this.value = newValue;
 		psp.firePropertyChange("value", oldValue, newValue);
 	}
+	public void fire() {
+		psp.firePropertyChange("value", null, value);
+	}
 	
 	
 	

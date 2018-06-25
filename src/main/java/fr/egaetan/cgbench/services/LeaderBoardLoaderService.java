@@ -6,8 +6,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import fr.egaetan.cgbench.Gui;
+import fr.egaetan.cgbench.api.LeaderboardApi;
 import fr.egaetan.cgbench.api.LeaderboardLeagueApi;
 import fr.egaetan.cgbench.api.TestSessionApi;
+import fr.egaetan.cgbench.api.param.LeaderboardParam;
 import fr.egaetan.cgbench.api.param.LeagueLeaderBoardParam;
 import fr.egaetan.cgbench.api.param.TestSessionParam;
 import fr.egaetan.cgbench.model.config.GameConfig;
@@ -24,15 +26,17 @@ public class LeaderBoardLoaderService implements LeaderBoardLoader {
 	private ObservableValue<GameConfig> currentGame;
 	private ObservableValue<AccountConfiguration> currentLogin;
 	private LeaderboardLeagueApi leaderboardLeagueApi;
+	private LeaderboardApi leaderboardApi;
 	private TestSessionApi testSessionApi;
 	Integer division = null;
 	String gameName = null;
 
 	
-	public LeaderBoardLoaderService(ObservableValue<GameConfig> currentGame, ObservableValue<AccountConfiguration> currentLogin, LeaderboardLeagueApi leaderboardLeagueApi, TestSessionApi testSessionApi) {
+	public LeaderBoardLoaderService(ObservableValue<GameConfig> currentGame, ObservableValue<AccountConfiguration> currentLogin, LeaderboardLeagueApi leaderboardLeagueApi, LeaderboardApi leaderboardApi, TestSessionApi testSessionApi) {
 		this.currentGame = currentGame;
 		this.currentLogin = currentLogin;
 		this.leaderboardLeagueApi = leaderboardLeagueApi;
+		this.leaderboardApi = leaderboardApi;
 		this.testSessionApi = testSessionApi;
 	}
 
@@ -62,7 +66,9 @@ public class LeaderBoardLoaderService implements LeaderBoardLoader {
 					res = this.leaderboardLeagueApi.load(new LeagueLeaderBoardParam(division)).execute().body();
 				}
 				else {
+					// contest finished
 					division = null;
+					res = this.leaderboardApi.load(new LeaderboardParam(this.currentGame.getValue())).execute().body();
 				}
 			}
 		}

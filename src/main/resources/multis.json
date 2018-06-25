@@ -11,6 +11,16 @@
 			]
 		},
 		{
+			"name": "code-of-kutulu",
+			"minOpponents": 3,
+			"maxOpponents": 3,
+			"seeds": [
+				{
+					"name": "seed"
+				}
+			]
+		},
+		{
 			"name": "code-royale",
 			"minOpponents": 1,
 			"maxOpponents": 1,

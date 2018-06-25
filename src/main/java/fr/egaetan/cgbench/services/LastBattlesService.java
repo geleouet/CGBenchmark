@@ -1,12 +1,6 @@
 package fr.egaetan.cgbench.services;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 import fr.egaetan.cgbench.api.LastBattlesApi;
 import fr.egaetan.cgbench.api.param.LastBattlesParam;
@@ -16,79 +10,38 @@ import fr.egaetan.cgbench.model.leaderboard.SuccessLastBattles;
 import fr.egaetan.cgbench.ui.ObservableValue;
 import fr.svivien.cgbenchmark.model.config.AccountConfiguration;
 import retrofit2.Call;
-import retrofit2.Response;
 
-public class LastBattlesService implements LastBattlesLoader {
+public class LastBattlesService extends LastBattlesLoaderService {
 	
-	private static final int DELAY_BETWEEN_REQUESTS = 25;
-
-	private static final Log LOG = LogFactory.getLog(LastBattlesService.class);
-
-	private final ObservableValue<GameConfig> currentGame;
+	final ObservableValue<GameConfig> currentGame;
 	private final ObservableValue<AccountConfiguration> currentLogin;
-	private final LastBattlesApi testBattlesApi;
-	
 	String gameName = null;
-	List<Battle> alreadyLoaded = new ArrayList<>();
-	ObservableValue<List<Battle>> observable = new ObservableValue<>();
-	ObservableValue<Double> progress = new ObservableValue<>();
-	
-	long lastLoad;
 	
 	public LastBattlesService(ObservableValue<GameConfig> currentGame, ObservableValue<AccountConfiguration> currentLogin, LastBattlesApi testBattlesApi) {
-		super();
+		super(testBattlesApi::load);
 		this.currentGame = currentGame;
 		this.currentLogin = currentLogin;
-		this.testBattlesApi = testBattlesApi;
-		progress.setValue(1.);
+	}
+
+	protected boolean notConfigured() {
+		return this.currentLogin == null || this.currentLogin.getValue() ==  null ||this.currentLogin.getValue().getAccountIde() == null || this.currentLogin.getValue().getAccountCookie() == null;
 	}
 
 	@Override
-	public ObservableValue<Double> progress() {
-		return progress;
+	protected Call<SuccessLastBattles> loadGames(int paramLastGameId) {
+		return this.testBattlesApi.load(new LastBattlesParam(""+this.currentLogin.getValue().getAccountIde(), paramLastGameId));
 	}
+
 	
-
 	@Override
-	public ObservableValue<List<Battle>> lastBattles() {
-		if (this.currentLogin == null) {
-			return observable;
-		}
-		AccountConfiguration config = this.currentLogin.getValue();
-		if (config ==  null ||config.getAccountIde() == null || config.getAccountCookie() == null) {
+	protected ObservableValue<List<Battle>> loadLastBattles() {
+		if (notConfigured()) {
 			return observable;
 		}
 		if (this.currentGame.getValue() != null) {
 			String name = this.currentGame.getValue().getName();
 			if (gameName == null || name == gameName) {
-				if (alreadyLoaded.isEmpty() || (System.currentTimeMillis() - lastLoad > 1_000 * DELAY_BETWEEN_REQUESTS)) {
-					lastLoad = System.currentTimeMillis();
-					LastBattlesParam param = new LastBattlesParam(""+config.getAccountIde(), 
-							alreadyLoaded.stream().min(Comparator.comparing(b -> b.getGameId())).map(b -> b.getGameId()).orElse(-1));
-					Call<SuccessLastBattles> load = this.testBattlesApi.load(param);
-					try {
-						Response<SuccessLastBattles> execute = load.execute();
-						if (execute.isSuccess()) {
-							SuccessLastBattles body = execute.body();
-							if (body.getSuccess() != null) {
-								progress.setValue(body.getSuccess().getProgress());
-								List<Battle> lastBattles = body.getSuccess().getLastBattles();
-								if (lastBattles.size() > 1) {
-									lastBattles.removeAll(alreadyLoaded);
-									System.out.println("Loaded " + lastBattles.size());
-									alreadyLoaded.addAll(lastBattles);
-									
-									observable.setValue(alreadyLoaded);
-								}
-							}
-							
-						}
-					}
-					catch (IOException e) {
-						LOG.error("Unable to load last battles", e);
-					}
-				}
-				
+				super.loadLastBattles();
 			}
 			else {
 				gameName = name;

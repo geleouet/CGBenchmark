@@ -9,8 +9,8 @@ import retrofit2.http.Headers;
 import retrofit2.http.POST;
 
 public interface LeaderboardApi {
-	    //@POST("/services/LeaderboardsRemoteService/getFilteredChallengeLeaderboard/")
-	    @POST("/services/LeaderboardsRemoteService/getFilteredPuzzleLeaderboard/")
+	   @POST("/services/LeaderboardsRemoteService/getFilteredChallengeLeaderboard/")
+	   // @POST("/services/LeaderboardsRemoteService/getFilteredPuzzleLeaderboard/")
 	    @Headers({
 	            "Host: www.codingame.com",
 	            "Connection: keep-alive",

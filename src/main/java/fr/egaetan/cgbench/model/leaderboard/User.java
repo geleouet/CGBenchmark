@@ -11,6 +11,7 @@ public class User {
 	Codingamer codingamer;
 	League league;
 	String testSessionHandle;
+	int percentage;
 
 	public int getRank() {
 		return rank;
@@ -78,5 +79,21 @@ public class User {
 
 	public void setLeague(League league) {
 		this.league = league;
+	}
+
+	public String getTestSessionHandle() {
+		return testSessionHandle;
+	}
+
+	public void setTestSessionHandle(String testSessionHandle) {
+		this.testSessionHandle = testSessionHandle;
+	}
+
+	public int getPercentage() {
+		return percentage;
+	}
+
+	public void setPercentage(int percentage) {
+		this.percentage = percentage;
 	}
 }

@@ -15,4 +15,15 @@ public class LastBattlesParam extends ArrayList<String>{
 		}
 			
 	}
+
+	public LastBattlesParam(int agentId, int last) {
+		add("" + agentId);
+		if (last != -1) {
+			add("" + last);
+		}
+		else {
+			add(null);
+		}
+		
+	}
 }

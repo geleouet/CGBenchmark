@@ -8,6 +8,9 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Image;
 import java.awt.Insets;
+import java.awt.Dialog.ModalityType;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -16,14 +19,18 @@ import java.io.FileNotFoundException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -43,21 +50,26 @@ import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 
+import fr.egaetan.cgbench.api.LastBattlesAgentApi;
 import fr.egaetan.cgbench.api.LastBattlesApi;
 import fr.egaetan.cgbench.api.LeaderboardApi;
 import fr.egaetan.cgbench.api.LeaderboardLeagueApi;
 import fr.egaetan.cgbench.api.TestSessionApi;
+import fr.egaetan.cgbench.api.param.LastBattlesParam;
 import fr.egaetan.cgbench.model.config.GameConfig;
 import fr.egaetan.cgbench.model.config.MultisConfig;
 import fr.egaetan.cgbench.model.leaderboard.Battle;
 import fr.egaetan.cgbench.model.leaderboard.Leaderboard;
+import fr.egaetan.cgbench.model.leaderboard.SuccessLastBattles;
 import fr.egaetan.cgbench.model.leaderboard.SuccessLeaderboard;
 import fr.egaetan.cgbench.model.leaderboard.User;
 import fr.egaetan.cgbench.services.LastBattlesLoader;
+import fr.egaetan.cgbench.services.LastBattlesLoaderService;
 import fr.egaetan.cgbench.services.LastBattlesService;
 import fr.egaetan.cgbench.services.LeaderBoardLoader;
 import fr.egaetan.cgbench.services.LeaderBoardLoaderService;
 import fr.egaetan.cgbench.services.SearchAgentId;
+import fr.egaetan.cgbench.ui.ActionOnUser;
 import fr.egaetan.cgbench.ui.BatchRun;
 import fr.egaetan.cgbench.ui.ConfPanel;
 import fr.egaetan.cgbench.ui.LastBattlesPane;
@@ -69,6 +81,7 @@ import fr.svivien.cgbenchmark.model.config.AccountConfiguration;
 import fr.svivien.cgbenchmark.model.config.GlobalConfiguration;
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
+import retrofit2.Call;
 import retrofit2.GsonConverterFactory;
 import retrofit2.Retrofit;
 
@@ -105,7 +118,9 @@ public class Gui {
 	ObservableValue<User> current;
 	ObservableValue<List<User>> userList;
 	ScheduledExecutorService scheduler;
-	private LastBattlesPane lastBattlesPane;		
+	private LastBattlesPane lastBattlesPane;
+	private JFrame mainFrame;
+	LastBattlesAgentApi lastBattlesAgentApi;		
 	
 	public Gui() {
 		currentGame = new ObservableValue<>();
@@ -161,9 +176,10 @@ public class Gui {
 		leaderboardApi = retrofit.create(LeaderboardApi.class);
 		leaderboardLeagueApi = retrofit.create(LeaderboardLeagueApi.class);
 		testSessionApi = retrofit.create(TestSessionApi.class);
+		lastBattlesAgentApi = retrofit.create(LastBattlesAgentApi.class);
 		LastBattlesApi testBattlesApi = retrofit.create(LastBattlesApi.class);
 
-		leaderboardService = new LeaderBoardLoaderService(currentGame, currentLogin, leaderboardLeagueApi, testSessionApi);
+		leaderboardService = new LeaderBoardLoaderService(currentGame, currentLogin, leaderboardLeagueApi, leaderboardApi, testSessionApi);
 		lastBattlesService = new LastBattlesService(currentGame, currentLogin, testBattlesApi);
 	}
 	
@@ -176,7 +192,7 @@ public class Gui {
 	}
 	
 	private void buildGui() {
-		JFrame mainFrame = new JFrame("CGBenchmark");
+		mainFrame = new JFrame("CGBenchmark");
 		mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
 		confPane = new ConfPanel(multisConfig, new SearchAgentId(leaderboardApi), batchRunner(mainFrame), currentGame, currentLogin);
@@ -197,10 +213,90 @@ public class Gui {
 		mainFrame.pack();
 		mainFrame.setVisible(true);
 	}
+	
+	private void createSubLastBattles(User user) {
+		ObservableValue<User> other = new ObservableValue<>();
+		other.setValue(user);
+		LastBattlesLoaderService lastBattlesLoaderService = new LastBattlesLoaderService(lastBattlesAgentApi::load) {
+			@Override
+			protected Call<SuccessLastBattles> loadGames(int lastGameId) {
+				return this.testBattlesApi.load(new LastBattlesParam(user.getAgentId(), lastGameId));
+			}
+			
+			@Override
+			protected String comment() {
+				return " " + user.getPseudo();
+			};
+		};
+		ObservableValue<List<Battle>> lastBattles2 = lastBattlesLoaderService.lastBattles();
+		
+		LastBattlesPane subLastBattlesPane = new LastBattlesPane(lastBattles2, userList, other);
+		subLastBattlesPane.buildPane();
+		subLastBattlesPane.process();
+		
+		JComponent panel = subLastBattlesPane.panel();
+		
+		AtomicBoolean endRequests = new AtomicBoolean(false);
+		scheduler.scheduleAtFixedRate(() -> {
+			if (endRequests.get()) {
+				throw new RuntimeException("Close connection");
+			}
+			lastBattlesLoaderService.lastBattles();
+		}, 10, 10, TimeUnit.SECONDS); 
+		
+		JDialog diag = new JDialog(mainFrame, 
+				user.getCodingamer().getPseudo(), ModalityType.MODELESS);
+		diag.getContentPane().add(panel, BorderLayout.CENTER);
+		diag.pack();
+		diag.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosed(WindowEvent e) {
+				endRequests.set(true);
+			}
+		});
+		diag.setVisible(true);
+	}
+	
+	private void createSubLeaderboard(User user) {
+		ObservableValue<User> other = new ObservableValue<>();
+		other.setValue(user);
+		
+		LastBattlesLoaderService lastBattlesLoaderService = new LastBattlesLoaderService(lastBattlesAgentApi::load) {
+			@Override
+			protected Call<SuccessLastBattles> loadGames(int lastGameId) {
+				return this.testBattlesApi.load(new LastBattlesParam(user.getAgentId(), lastGameId));
+			}
+		};
+		LeaderBoardPane leaderBoardPane = new LeaderBoardPane(userList, other, confPane.ennemiesLink(), leaderboardActions(),  
+				lastBattlesLoaderService.lastBattles());
+		leaderBoardPane.buildPane();
+		
+		AtomicBoolean endRequests = new AtomicBoolean(false);
+		scheduler.scheduleAtFixedRate(() -> {
+			if (endRequests.get()) {
+				throw new RuntimeException("Close connection");
+			}
+			lastBattlesLoaderService.lastBattles();
+		}, 1, 10, TimeUnit.SECONDS); 
+		
+		JDialog diag = new JDialog(mainFrame, 
+				user.getCodingamer().getPseudo(), ModalityType.MODELESS);
+		diag.getContentPane().add(leaderBoardPane.panel(), BorderLayout.CENTER);
+		diag.pack();
+		diag.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosed(WindowEvent e) {
+				endRequests.set(true);
+			}
+		});
+		diag.setVisible(true);
+	}
 
 	private JPanel buildArenaPane() {
 		ObservableValue<List<Battle>> lastBattles = lastBattlesService.lastBattles();
-		leaderboardPane = new LeaderBoardPane(userList, current, confPane.ennemiesLink(), lastBattles);
+		leaderboardPane = new LeaderBoardPane(userList, current, confPane.ennemiesLink(),
+				leaderboardActions(),
+				lastBattles);
 		leaderboardPane.buildPane();
 		
 		lastBattlesPane = new LastBattlesPane(lastBattles, userList, current);
@@ -278,6 +374,13 @@ public class Gui {
 		arenaTabs.add("LastBattles", lastBattlesPane.panel());
 		arena.add(arenaTabs, new GridBagConstraints(0, 1, 2, 1, 1, 1, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
 		return arena;
+	}
+
+	private List<ActionOnUser> leaderboardActions() {
+		return Arrays.asList(
+				new ActionOnUser(this::createSubLeaderboard, "Show statistics..."),
+				new ActionOnUser(this::createSubLastBattles, "Show last battles...")
+				);
 	}
 
 	private BatchRun batchRunner(JFrame mainFrame) {

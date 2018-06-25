@@ -105,7 +105,9 @@ public class Battle {
 	}
 
 	public int position(User userId) {
-		return players.stream().filter(p-> p .getPlayerAgentId() == userId.agentId).map(p->p.position).findFirst().orElse(99);
+		return players.stream()
+				.filter(p-> p .getPlayerAgentId() == userId.agentId)
+				.map(p->p.position).findFirst().orElse(99);
 	}
 
 }

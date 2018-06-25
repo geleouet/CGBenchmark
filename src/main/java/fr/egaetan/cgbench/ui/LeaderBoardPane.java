@@ -1,7 +1,9 @@
 package fr.egaetan.cgbench.ui;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dialog.ModalityType;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
@@ -12,6 +14,11 @@ import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -21,13 +28,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import javax.swing.AbstractAction;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
@@ -39,10 +50,19 @@ import javax.swing.SwingUtilities;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
+import fr.egaetan.cgbench.api.LastBattlesAgentApi;
+import fr.egaetan.cgbench.api.param.LastBattlesParam;
 import fr.egaetan.cgbench.model.leaderboard.Battle;
 import fr.egaetan.cgbench.model.leaderboard.Codingamer;
+import fr.egaetan.cgbench.model.leaderboard.SuccessLastBattles;
 import fr.egaetan.cgbench.model.leaderboard.User;
+import fr.egaetan.cgbench.services.LastBattlesLoaderService;
 import fr.egaetan.cgbench.ui.ConfPanel.EnnemiesLink;
+import fr.svivien.cgbenchmark.Constants;
+import okhttp3.OkHttpClient;
+import retrofit2.Call;
+import retrofit2.GsonConverterFactory;
+import retrofit2.Retrofit;
 
 public class LeaderBoardPane {
 
@@ -57,6 +77,8 @@ public class LeaderBoardPane {
 	List<User> users;
 	final ObservableValue<User> currentUser;
 	final ObservableValue<List<Battle>> lastBattles;
+	final ObservableValue<List<User>> usersList;
+	final List<ActionOnUser> actions;
 
 	private ExecutorService bgThread = Executors.newCachedThreadPool(new ThreadFactory() {
 
@@ -69,11 +91,16 @@ public class LeaderBoardPane {
 			return t;
 		}
 	});
+	
 
 	
-	public LeaderBoardPane(ObservableValue<List<User>> usersList,  ObservableValue<User> currentUser, EnnemiesLink ennemiesLink, ObservableValue<List<Battle>> lastBattles) {
+	public LeaderBoardPane(ObservableValue<List<User>> usersList,  ObservableValue<User> currentUser, EnnemiesLink ennemiesLink,
+			List<ActionOnUser> actions,
+			ObservableValue<List<Battle>> lastBattles) {
+		this.usersList = usersList;
 		this.ennemiesLink = ennemiesLink;
 		this.currentUser = currentUser;
+		this.actions = actions;
 		this.lastBattles = lastBattles;
 		this.model = new BoardModel();
 		lastBattles.addPropertyChangeListener(l -> SwingUtilities.invokeLater(() -> model.fireTableDataChanged()));
@@ -325,6 +352,8 @@ public class LeaderBoardPane {
 		board.getColumnModel().getColumn(1).setPreferredWidth(150);
 		board.getColumnModel().getColumn(2).setPreferredWidth(50);
 		board.getColumnModel().getColumn(2).setPreferredWidth(80);
+		board.getColumnModel().getColumn(7).setPreferredWidth(35);
+		board.getColumnModel().getColumn(8).setPreferredWidth(30);
 	    
 		board.addMouseListener(new MouseAdapter() {
 			
@@ -342,6 +371,16 @@ public class LeaderBoardPane {
 							ennemiesLink.add(user.getPseudo(), user.getAgentId());
 						}
 					}));
+					
+					for (ActionOnUser action : actions) {
+						pop.add(new JMenuItem(new AbstractAction(action.name) {
+							
+							@Override
+							public void actionPerformed(ActionEvent ev) {
+								action.accept(user);
+							}
+						}));
+					}
 					pop.show(board, e.getX(), e.getY());
 				}
 			}
@@ -387,6 +426,8 @@ public class LeaderBoardPane {
 				return "%95";
 			case 7:
 				return "Total";
+			case 8:
+				return "%%";
 
 			default:
 				return "";
@@ -412,6 +453,8 @@ public class LeaderBoardPane {
 				return String.class;
 			case 7:
 				return Integer.class;
+			case 8:
+				return Integer.class;
 
 			default:
 				return Object.class;
@@ -430,7 +473,7 @@ public class LeaderBoardPane {
 		
 		@Override
 		public int getColumnCount() {
-			return 8;
+			return 9;
 		}
 
 		@Override
@@ -459,7 +502,11 @@ public class LeaderBoardPane {
 				if (matchs.size() == 0) {
 					return null;
 				}
-				return (int) Math.round((matchs.stream().filter(m -> m.position(userId) < m.position(user)).count()*100.) / matchs.size());
+				return (int) Math.round((matchs.stream()
+						.filter(m -> m.position(userId) < m.position(user)).count()*100.) / 
+						matchs.stream()
+						.filter(m -> m.position(userId) != m.position(user)).count()
+						);
 			}
 			case 5: {
 				User userId = currentUser.getValue();
@@ -491,7 +538,9 @@ public class LeaderBoardPane {
 				if (matchs.size() == 0) {
 					return null;
 				}
-				double w = (int) ((matchs.stream().filter(m -> m.position(userId) < m.position(user)).count()) );
+				double w = (int) 
+						((matchs.stream().filter(m -> m.position(userId) < m.position(user)).count()) 
+								+ 0.5 *(matchs.stream().filter(m -> m.position(userId) == m.position(user)).count()) );
 				double n = matchs.size();
 				
 				double m = w/n;
@@ -521,6 +570,13 @@ public class LeaderBoardPane {
 					return null;
 				}
 				return matchs.size();
+			}
+			case 8:
+			{
+				if (user.getPercentage() == 100) {
+					return null;
+				}
+				return user.getPercentage();
 			}
 			
 			}

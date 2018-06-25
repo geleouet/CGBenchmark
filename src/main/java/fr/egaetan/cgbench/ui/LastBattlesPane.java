@@ -29,6 +29,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 
 import fr.egaetan.cgbench.model.leaderboard.Battle;
 import fr.egaetan.cgbench.model.leaderboard.Codingamer;
@@ -110,32 +111,81 @@ public class LastBattlesPane {
 	ObservableValue<List<User>> users;
 	ObservableValue<User> me;
 	private JScrollPane scroll;
+	JTable tableLastBattle;
 
 	public LastBattlesPane(ObservableValue<List<Battle>> lastBattles$, ObservableValue<List<User>> users, ObservableValue<User> me) {
 		this.lastBattles$ = lastBattles$;
 		this.users = users;
 		this.me = me;
 		this.lastBattles = new ObservableValue<>();
-		PropertyChangeListener l = new PropertyChangeListener() {
-			
-			@Override
-			public void propertyChange(PropertyChangeEvent evt) {
-				if (me.getValue() == null || lastBattles$.getValue()==null) {
-					return;
-				}
-				lastBattles.setValue(lastBattles$.getValue().stream()
-						.filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == me.getValue().getAgentId()))
-						.sorted(Comparator.comparing(b -> -b.getGameId()))
-						.collect(Collectors.toList()));
-			}
-		};
+		PropertyChangeListener l = evt -> process();
 		lastBattles$.addPropertyChangeListener(l);
 		me.addPropertyChangeListener(l);
+	}
+	
+	public void process() {
+		if (me.getValue() == null || lastBattles$.getValue()==null) {
+			return;
+		}
+		lastBattles.setValue(lastBattles$.getValue().stream()
+				.filter(b -> b.isDone() && b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == me.getValue().getAgentId()))
+				.sorted(Comparator.comparing(b -> -b.getGameId()))
+				.collect(Collectors.toList()));
+		long count_Victory = lastBattles.getValue().stream().filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == me.getValue().getAgentId() && p.getPosition()==0)).count();
+		long count_Second = lastBattles.getValue().stream().filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == me.getValue().getAgentId() && p.getPosition()==1)).count();
+		long count_Third = lastBattles.getValue().stream().filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == me.getValue().getAgentId() && p.getPosition()==2)).count();
+		long count_Fourth = lastBattles.getValue().stream().filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == me.getValue().getAgentId() && p.getPosition()==3)).count();
+		long count_All = lastBattles.getValue().stream().filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == me.getValue().getAgentId())).count();
+		tableLastBattle.getColumnModel().getColumn(0).setHeaderValue(
+				String.format("%2.2f", (100. * count_Victory / count_All)) +" %");
+		tableLastBattle.getColumnModel().getColumn(1).setHeaderValue(String.format("%2.2f", (100. * count_Second / count_All)) +" %");
+		tableLastBattle.getColumnModel().getColumn(2).setHeaderValue(String.format("%2.2f", (100. * count_Third / count_All)) +" %");
+		tableLastBattle.getColumnModel().getColumn(3).setHeaderValue(String.format("%2.2f", (100. * count_Fourth / count_All)) +" %");
+		tableLastBattle.getTableHeader().repaint();
+		
 	}
 
 	public void buildPane() {
 		LastBattleTableModel dm = new LastBattleTableModel();
-		JTable tableLastBattle = new JTable(dm);
+		tableLastBattle = new JTable(dm) {
+			private static final long serialVersionUID = 1L;
+
+			//Implement table header tool tips.
+		    @Override
+			protected JTableHeader createDefaultTableHeader() {
+		        return new JTableHeader(columnModel) {
+					private static final long serialVersionUID = 1L;
+
+					@Override
+					public String getToolTipText(MouseEvent e) {
+		                java.awt.Point pt = e.getPoint();
+		                int index = columnModel.getColumnIndexAtX(pt.x);
+		                int realIndex = columnModel.getColumn(index).getModelIndex();
+		                long count_All = lastBattles.getValue() == null ? 0 : lastBattles.getValue().stream().filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == me.getValue().getAgentId())).count();
+		                long count = 0;
+		                switch (realIndex) {
+						
+						case 0:
+							count = lastBattles.getValue() == null ? 0 : lastBattles.getValue().stream().filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == me.getValue().getAgentId() && p.getPosition()==0)).count();
+							break;
+						case 1:
+							count = lastBattles.getValue() == null ? 0 : lastBattles.getValue().stream().filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == me.getValue().getAgentId() && p.getPosition()==1)).count();
+							break;
+						case 2:
+							count = lastBattles.getValue() == null ? 0 : lastBattles.getValue().stream().filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == me.getValue().getAgentId() && p.getPosition()==2)).count();
+							break;
+						case 3:
+							count = lastBattles.getValue() == null ? 0 : lastBattles.getValue().stream().filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPlayerAgentId() == me.getValue().getAgentId() && p.getPosition()==3)).count();
+							break;
+
+						default:
+							return null;
+						}
+		                return count + "/ " + count_All;
+		            }
+		        };
+		    }
+		};
 		
 		tableLastBattle.addMouseListener(new MouseAdapter() {
 			@Override
@@ -222,12 +272,17 @@ public class LastBattlesPane {
 			
 			boolean isMe = false;
 			boolean isEmpty = false;
+			boolean isDone = false;
 			
 			@Override
 			protected void paintComponent(Graphics g) {
 				super.paintComponent(g);
-				
-				if (isEmpty) {
+				if (!isDone) {
+					Dimension s = getSize();
+					g.setColor(new Color(50,50,100,100));
+					g.fillRect(0, 0, s.width, s.height);
+				}
+				else if (isEmpty) {
 					Dimension s = getSize();
 					g.setColor(new Color(50,50,50,100));
 					g.fillRect(0, 0, s.width, s.height);
@@ -252,44 +307,85 @@ public class LastBattlesPane {
 				}
 				
 				isEmpty = false;
+				Battle battle = lastBattles.getValue().get(row);
 				setBorder(BorderFactory.createEmptyBorder());
+				if (!battle.isDone()) {
+					setFont(getFont().deriveFont(Font.ITALIC));
+					isDone = false;
+				}
+				else {
+					setFont(getFont().deriveFont(Font.PLAIN));
+					isDone = true;
+				}
 				int bdsize = 3;
-				if (p.getPosition() == 0) {
-					if (column < 3) {
-						Player pl = (Player) table.getValueAt(row, column+1);
-						if (column == 0) {
-							if (pl != null && pl.getPosition()== p.getPosition()) {
-								setBorder(BorderFactory.createMatteBorder(bdsize, bdsize, bdsize, 0, Color.red));
+				if (isDone) {
+					if (p.getPosition() == 0) {
+						if (column < 3) {
+							Player pl = (Player) table.getValueAt(row, column+1);
+							if (column == 0) {
+								if (pl != null && pl.getPosition()== p.getPosition()) {
+									setBorder(BorderFactory.createMatteBorder(bdsize, bdsize, bdsize, 0, Color.red));
+								}
+							}
+							else {
+								if (pl != null && pl.getPosition()== p.getPosition()) {
+									setBorder(BorderFactory.createMatteBorder(bdsize, 0, bdsize, 0, Color.red));
+								}
+								else {
+									setBorder(BorderFactory.createMatteBorder(bdsize, 0, bdsize, bdsize, Color.red));
+								}
 							}
 						}
 						else {
-							if (pl != null && pl.getPosition()== p.getPosition()) {
-								setBorder(BorderFactory.createMatteBorder(bdsize, 0, bdsize, 0, Color.red));
-							}
-							else {
-								setBorder(BorderFactory.createMatteBorder(bdsize, 0, bdsize, bdsize, Color.red));
-							}
+							setBorder(BorderFactory.createMatteBorder(bdsize, 0, bdsize, bdsize, Color.red));
 						}
 					}
-				}
-				if (p.getPosition() == 1) {
-					if (column < 3) {
-						if (column >= 1) {
-							Player pl = (Player) table.getValueAt(row, column+1);
-							Player pv = (Player) table.getValueAt(row, column-1);
-							
-							if (pl != null && pl.getPosition()== p.getPosition() && pv != null && pv.getPosition()== p.getPosition()) {
-								setBorder(BorderFactory.createMatteBorder(bdsize, 0, bdsize, 0, Color.yellow));
+					if (p.getPosition() == 1) {
+						if (column < 3) {
+							if (column >= 1) {
+								Player pl = (Player) table.getValueAt(row, column+1);
+								Player pv = (Player) table.getValueAt(row, column-1);
+
+								if (pl != null && pl.getPosition()== p.getPosition() && pv != null && pv.getPosition()== p.getPosition()) {
+									setBorder(BorderFactory.createMatteBorder(bdsize, 0, bdsize, 0, Color.yellow));
+								}
+								else if (pl != null && pl.getPosition()== p.getPosition() && pv != null && pv.getPosition() != p.getPosition()) {
+									setBorder(BorderFactory.createMatteBorder(bdsize, bdsize, bdsize, 0, Color.yellow));
+								}
+								else if (pl != null && pl.getPosition()!= p.getPosition() && pv != null && pv.getPosition() == p.getPosition()) {
+									setBorder(BorderFactory.createMatteBorder(bdsize, 0, bdsize, bdsize, Color.yellow));
+								}
+								else if (pl == null && pv != null && pv.getPosition() == p.getPosition()) {
+									setBorder(BorderFactory.createMatteBorder(bdsize, 0, bdsize, bdsize, Color.yellow));
+								}
 							}
-							else if (pl != null && pl.getPosition()== p.getPosition() && pv != null && pv.getPosition() != p.getPosition()) {
-								setBorder(BorderFactory.createMatteBorder(bdsize, bdsize, bdsize, 0, Color.yellow));
+						}
+						else {
+							setBorder(BorderFactory.createMatteBorder(bdsize, 0, bdsize, bdsize, Color.yellow));
+						}
+					}
+					if (p.getPosition() == 2) {
+						if (column < 3) {
+							if (column >= 1) {
+								Player pl = (Player) table.getValueAt(row, column+1);
+								Player pv = (Player) table.getValueAt(row, column-1);
+								
+								if (pl != null && pl.getPosition()== p.getPosition() && pv != null && pv.getPosition()== p.getPosition()) {
+									setBorder(BorderFactory.createMatteBorder(bdsize, 0, bdsize, 0, Color.green.darker()));
+								}
+								else if (pl != null && pl.getPosition()== p.getPosition() && pv != null && pv.getPosition() != p.getPosition()) {
+									setBorder(BorderFactory.createMatteBorder(bdsize, bdsize, bdsize, 0, Color.green.darker()));
+								}
+								else if (pl != null && pl.getPosition()!= p.getPosition() && pv != null && pv.getPosition() == p.getPosition()) {
+									setBorder(BorderFactory.createMatteBorder(bdsize, 0, bdsize, bdsize, Color.green.darker()));
+								}
+								else if (pl == null && pv != null && pv.getPosition() == p.getPosition()) {
+									setBorder(BorderFactory.createMatteBorder(bdsize, 0, bdsize, bdsize, Color.green.darker()));
+								}
 							}
-							else if (pl != null && pl.getPosition()!= p.getPosition() && pv != null && pv.getPosition() == p.getPosition()) {
-								setBorder(BorderFactory.createMatteBorder(bdsize, 0, bdsize, bdsize, Color.yellow));
-							}
-							else if (pl == null && pv != null && pv.getPosition() == p.getPosition()) {
-								setBorder(BorderFactory.createMatteBorder(bdsize, 0, bdsize, bdsize, Color.yellow));
-							}
+						}
+						else {
+							setBorder(BorderFactory.createMatteBorder(bdsize, 0, bdsize, bdsize, Color.green.darker()));
 						}
 					}
 				}
