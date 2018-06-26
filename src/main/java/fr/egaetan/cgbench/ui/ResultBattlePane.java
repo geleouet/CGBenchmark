@@ -1,5 +1,6 @@
 package fr.egaetan.cgbench.ui;
 
+import java.util.Collections;
 import java.util.List;
 
 import javax.swing.JTable;
@@ -10,7 +11,7 @@ import fr.egaetan.cgbench.model.leaderboard.User;
 public class ResultBattlePane extends LeaderBoardPane {
 
 	public ResultBattlePane(ObservableValue<List<User>> usersList, ObservableValue<User> currentUser, ObservableValue<List<Battle>> lastBattles) {
-		super(usersList, currentUser, null, lastBattles);
+		super(usersList, currentUser, null, Collections.emptyList(), lastBattles);
 	}
 
 	@Override

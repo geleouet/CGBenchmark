@@ -16,6 +16,7 @@ import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
@@ -39,6 +40,7 @@ import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 
@@ -53,7 +55,9 @@ import com.google.gson.stream.JsonReader;
 import fr.egaetan.cgbench.api.LastBattlesAgentApi;
 import fr.egaetan.cgbench.api.LastBattlesApi;
 import fr.egaetan.cgbench.api.LeaderboardApi;
+import fr.egaetan.cgbench.api.LeaderboardChallengeApi;
 import fr.egaetan.cgbench.api.LeaderboardLeagueApi;
+import fr.egaetan.cgbench.api.LeaderboardMultiApi;
 import fr.egaetan.cgbench.api.TestSessionApi;
 import fr.egaetan.cgbench.api.param.LastBattlesParam;
 import fr.egaetan.cgbench.model.config.GameConfig;
@@ -83,6 +87,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Call;
 import retrofit2.GsonConverterFactory;
+import retrofit2.Response;
 import retrofit2.Retrofit;
 
 public class Gui {
@@ -107,7 +112,8 @@ public class Gui {
 	
 	ConfPanel confPane;
 	MultisConfig multisConfig;
-	private LeaderboardApi leaderboardApi;
+	private LeaderboardChallengeApi leaderboardChallengeApi;
+	private LeaderboardMultiApi leaderboardMultiApi;
 	LeaderboardLeagueApi leaderboardLeagueApi;
 	private LeaderBoardPane leaderboardPane;
 	TestSessionApi testSessionApi;
@@ -119,8 +125,9 @@ public class Gui {
 	ObservableValue<List<User>> userList;
 	ScheduledExecutorService scheduler;
 	private LastBattlesPane lastBattlesPane;
-	private JFrame mainFrame;
-	LastBattlesAgentApi lastBattlesAgentApi;		
+	JFrame mainFrame;
+	LastBattlesAgentApi lastBattlesAgentApi;
+	private LeaderboardApi leaderboardApi;		
 	
 	public Gui() {
 		currentGame = new ObservableValue<>();
@@ -162,7 +169,7 @@ public class Gui {
 				lastBattlesService.lastBattles();
 			}
 		});
-		scheduler.scheduleAtFixedRate(scheduledLeaderBoard, 30, 30, TimeUnit.SECONDS);
+		scheduler.scheduleAtFixedRate(scheduledLeaderBoard, 0, 30, TimeUnit.SECONDS);
 	}
 	
 	
@@ -173,14 +180,45 @@ public class Gui {
 		OkHttpClient client = new OkHttpClient.Builder().readTimeout(600, TimeUnit.SECONDS).build();
 		
 		Retrofit retrofit = new Retrofit.Builder().client(client).baseUrl(Constants.CG_HOST).addConverterFactory(GsonConverterFactory.create()).build();
-		leaderboardApi = retrofit.create(LeaderboardApi.class);
+		leaderboardChallengeApi = retrofit.create(LeaderboardChallengeApi.class);
+		leaderboardMultiApi = retrofit.create(LeaderboardMultiApi.class);
 		leaderboardLeagueApi = retrofit.create(LeaderboardLeagueApi.class);
 		testSessionApi = retrofit.create(TestSessionApi.class);
 		lastBattlesAgentApi = retrofit.create(LastBattlesAgentApi.class);
 		LastBattlesApi testBattlesApi = retrofit.create(LastBattlesApi.class);
-
+		leaderboardApi = p -> {
+			if (currentGame.getValue() != null) {
+				if (currentGame.getValue().isChallenge() == null) {
+					Call<SuccessLeaderboard> multi = leaderboardMultiApi.load(p);
+					try {
+						Response<SuccessLeaderboard> execute = multi.execute();
+						if (execute.isSuccess() && execute.body() != null && execute.body().getSuccess() != null) {
+							currentGame.getValue().setChallenge(false);
+						}
+						else if (execute.isSuccess() && execute.body() != null && execute.body().getSuccess() == null) {
+							currentGame.getValue().setChallenge(true);
+						} 
+						
+					}
+					catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+				if (currentGame.getValue().isChallenge() != null && !currentGame.getValue().isChallenge()) {
+					return leaderboardMultiApi.load(p);
+				}
+				return leaderboardChallengeApi.load(p);
+			}
+			return leaderboardMultiApi.load(p);
+		};
+		
 		leaderboardService = new LeaderBoardLoaderService(currentGame, currentLogin, leaderboardLeagueApi, leaderboardApi, testSessionApi);
-		lastBattlesService = new LastBattlesService(currentGame, currentLogin, testBattlesApi);
+		lastBattlesService = new LastBattlesService(currentGame, currentLogin, testBattlesApi) {
+			@Override
+			protected String comment() {
+				return " " + currentLogin.getValue().getAccountName();
+			}
+		};
 	}
 	
 	private void load(@SuppressWarnings("unused") String string) {
@@ -215,46 +253,60 @@ public class Gui {
 	}
 	
 	private void createSubLastBattles(User user) {
-		ObservableValue<User> other = new ObservableValue<>();
-		other.setValue(user);
-		LastBattlesLoaderService lastBattlesLoaderService = new LastBattlesLoaderService(lastBattlesAgentApi::load) {
+		AtomicBoolean endRequests = new AtomicBoolean(false);
+		new SwingWorker<Void, Void>() {
+
+			private LastBattlesPane subLastBattlesPane;
+
 			@Override
-			protected Call<SuccessLastBattles> loadGames(int lastGameId) {
-				return this.testBattlesApi.load(new LastBattlesParam(user.getAgentId(), lastGameId));
+			protected Void doInBackground()  {
+				
+				ObservableValue<User> other = new ObservableValue<>();
+				other.setValue(user);
+				LastBattlesLoaderService lastBattlesLoaderService = new LastBattlesLoaderService(lastBattlesAgentApi::load) {
+					@Override
+					protected Call<SuccessLastBattles> loadGames(int lastGameId) {
+						return this.testBattlesApi.load(new LastBattlesParam(user.getAgentId(), lastGameId));
+					}
+					
+					@Override
+					protected String comment() {
+						return " " + user.getPseudo();
+					}
+				};
+				ObservableValue<List<Battle>> lastBattles2 = lastBattlesLoaderService.lastBattles();
+				
+				subLastBattlesPane = new LastBattlesPane(lastBattles2, userList, other);
+				subLastBattlesPane.buildPane();
+				subLastBattlesPane.process();
+				
+				
+				scheduler.scheduleAtFixedRate(() -> {
+					if (endRequests.get()) {
+						throw new RuntimeException("Close connection");
+					}
+					lastBattlesLoaderService.lastBattles();
+				}, 10, 10, TimeUnit.SECONDS); 
+				
+				return null;
 			}
 			
 			@Override
-			protected String comment() {
-				return " " + user.getPseudo();
-			};
-		};
-		ObservableValue<List<Battle>> lastBattles2 = lastBattlesLoaderService.lastBattles();
-		
-		LastBattlesPane subLastBattlesPane = new LastBattlesPane(lastBattles2, userList, other);
-		subLastBattlesPane.buildPane();
-		subLastBattlesPane.process();
-		
-		JComponent panel = subLastBattlesPane.panel();
-		
-		AtomicBoolean endRequests = new AtomicBoolean(false);
-		scheduler.scheduleAtFixedRate(() -> {
-			if (endRequests.get()) {
-				throw new RuntimeException("Close connection");
+			protected void done() {
+				JComponent panel = subLastBattlesPane.panel();
+				JDialog diag = new JDialog(mainFrame, user.getCodingamer() != null ? user.getCodingamer().getPseudo() : user.getPseudo(), ModalityType.MODELESS);
+				diag.getContentPane().add(panel, BorderLayout.CENTER);
+				diag.pack();
+				diag.addWindowListener(new WindowAdapter() {
+					@Override
+					public void windowClosed(WindowEvent e) {
+						endRequests.set(true);
+					}
+				});
+				diag.setVisible(true);
 			}
-			lastBattlesLoaderService.lastBattles();
-		}, 10, 10, TimeUnit.SECONDS); 
+		}.execute();
 		
-		JDialog diag = new JDialog(mainFrame, 
-				user.getCodingamer().getPseudo(), ModalityType.MODELESS);
-		diag.getContentPane().add(panel, BorderLayout.CENTER);
-		diag.pack();
-		diag.addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosed(WindowEvent e) {
-				endRequests.set(true);
-			}
-		});
-		diag.setVisible(true);
 	}
 	
 	private void createSubLeaderboard(User user) {
@@ -265,6 +317,11 @@ public class Gui {
 			@Override
 			protected Call<SuccessLastBattles> loadGames(int lastGameId) {
 				return this.testBattlesApi.load(new LastBattlesParam(user.getAgentId(), lastGameId));
+			}
+			
+			@Override
+			protected String comment() {
+				return " " + user.getPseudo();
 			}
 		};
 		LeaderBoardPane leaderBoardPane = new LeaderBoardPane(userList, other, confPane.ennemiesLink(), leaderboardActions(),  
@@ -279,8 +336,7 @@ public class Gui {
 			lastBattlesLoaderService.lastBattles();
 		}, 1, 10, TimeUnit.SECONDS); 
 		
-		JDialog diag = new JDialog(mainFrame, 
-				user.getCodingamer().getPseudo(), ModalityType.MODELESS);
+		JDialog diag = new JDialog(mainFrame, user.getCodingamer() != null ? user.getCodingamer().getPseudo() : user.getPseudo(), ModalityType.MODELESS);
 		diag.getContentPane().add(leaderBoardPane.panel(), BorderLayout.CENTER);
 		diag.pack();
 		diag.addWindowListener(new WindowAdapter() {

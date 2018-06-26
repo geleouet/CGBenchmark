@@ -20,6 +20,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
@@ -108,14 +110,20 @@ public class LastBattlesPane {
 	
 	ObservableValue<List<Battle>> lastBattles;
 	ObservableValue<List<Battle>> lastBattles$;
-	ObservableValue<List<User>> users;
+	//ObservableValue<List<User>> users;
 	ObservableValue<User> me;
 	private JScrollPane scroll;
 	JTable tableLastBattle;
+	Function<Player, Optional<User>> searchUser; 
+	
 
 	public LastBattlesPane(ObservableValue<List<Battle>> lastBattles$, ObservableValue<List<User>> users, ObservableValue<User> me) {
 		this.lastBattles$ = lastBattles$;
-		this.users = users;
+		//this.users = users;
+		searchUser = u -> {
+			return users.getValue().stream().filter(i -> i.getAgentId() == u.getPlayerAgentId()
+					|| (i.getCodingamer() != null && i.getCodingamer().getUserId() == u.getUserId())).findFirst();
+		};
 		this.me = me;
 		this.lastBattles = new ObservableValue<>();
 		PropertyChangeListener l = evt -> process();
@@ -273,6 +281,7 @@ public class LastBattlesPane {
 			boolean isMe = false;
 			boolean isEmpty = false;
 			boolean isDone = false;
+			boolean isAway = false;
 			
 			@Override
 			protected void paintComponent(Graphics g) {
@@ -282,6 +291,11 @@ public class LastBattlesPane {
 					g.setColor(new Color(50,50,100,100));
 					g.fillRect(0, 0, s.width, s.height);
 				}
+				else if (isAway) {
+					Dimension s = getSize();
+					g.setColor(new Color(150,100,50,100));
+					g.fillRect(0, 0, s.width, s.height);
+				}
 				else if (isEmpty) {
 					Dimension s = getSize();
 					g.setColor(new Color(50,50,50,100));
@@ -289,7 +303,7 @@ public class LastBattlesPane {
 				}
 				else if (!isMe) {
 					Dimension s = getSize();
-					g.setColor(new Color(50,50,50,25));
+					g.setColor(new Color(50,50,50,35));
 					g.fillRect(0, 0, s.width, s.height);
 				}
 			}
@@ -298,11 +312,12 @@ public class LastBattlesPane {
 				super.getTableCellRendererComponent(table, "", isSelected, hasFocus, row, column);
 				isMe = false;
 				Player p = (Player) value;
-				if (users == null ||  users.getValue() == null || p == null) {
+				if (lastBattles == null ||  lastBattles.getValue() == null || p == null) {
 					setText("");
 					setIcon(null);
 					setToolTipText(null);
 					isEmpty = true;
+					isAway = false;
 					return this;
 				}
 				
@@ -390,12 +405,23 @@ public class LastBattlesPane {
 					}
 				}
 				
-				Optional<User> findFirst = users.getValue().stream().filter(u -> u.getAgentId() == p.getPlayerAgentId() || (u.getCodingamer() != null && p.getUserId() == u.getCodingamer().getUserId())).findFirst();
+//				Optional<User> findFirst = users.getValue().stream().filter(u -> u.getAgentId() == p.getPlayerAgentId() 
+//						|| (u.getCodingamer() != null && p.getUserId() == u.getCodingamer().getUserId())).findFirst();
+
+				Optional<User> userSearched = searchUser.apply(p);
 				
-				if (findFirst.isPresent()) {
-					User user = findFirst.get();
-					if (user.getCodingamer() != null && user.getCodingamer().getUserId() == me.getValue().getCodingamer().getUserId()) {
-						isMe = true;
+				if (userSearched.isPresent()) {
+					isAway = false;
+					User user = userSearched.get();
+					if (me.getValue().getCodingamer() != null) {
+						if (user.getCodingamer() != null && user.getCodingamer().getUserId() == me.getValue().getCodingamer().getUserId()) {
+							isMe = true;
+						}
+					}
+					else {
+						if (user.getAgentId() == me.getValue().getAgentId()) {
+							isMe = true;
+						}
 					}
 					final String avatarId = avatar(user);
 					if (avatarId.startsWith("_boss")) {
@@ -404,17 +430,15 @@ public class LastBattlesPane {
 					ImageIcon iconForBattle = avatarIcon(avatarId);
 					setIcon(iconForBattle);
 					
-					int p$ = -1;
-					for (int i = 0; i < users.getValue().size(); i++) {
-						if (users.getValue().get(i)!=null && users.getValue().get(i).getPseudo() != null && users.getValue().get(i).getPseudo().equals(user.getPseudo())) {
-							p$ = i;
-							break;
-						}
-					}
 					setText(user.getPseudo() /*+ (p$ != -1 ? (" #" + (p$+1)) : "")*/);
 					
-					setToolTipText("<html><img src=\"file:./avatars/avatar"+ avatarId + ".png\" height=\"50\" width=\"50\">"+(p$ != -1 ? (" #" + (p$+1)) : "")+ " "+ user.getPseudo() +" </html>");
+					setToolTipText("<html><img src=\"file:./avatars/avatar"+ avatarId + ".png\" height=\"50\" width=\"50\">"+(" #" + user.getRank()) + " "+ user.getPseudo() +" </html>");
 					
+				}
+				else {
+					isAway = true;
+					setIcon(avatarIcon(p.getAvatar()));
+					setText(p.getNickname());
 				}
 				return this;
 			}

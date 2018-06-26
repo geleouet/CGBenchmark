@@ -9,6 +9,7 @@ public class GameConfig {
 	int minOpponents;
 	int maxOpponents;
 	List<SeedParamConfig> seeds;
+	Boolean isChallenge;
 
 	public List<SeedParamConfig> getSeeds() {
 		return seeds;
@@ -48,6 +49,14 @@ public class GameConfig {
 
 	public void setGlobal_name(String global_name) {
 		this.global_name = global_name;
+	}
+
+	public Boolean isChallenge() {
+		return isChallenge;
+	}
+
+	public void setChallenge(Boolean isChallenge) {
+		this.isChallenge = isChallenge;
 	}
 
 

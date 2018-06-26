@@ -74,7 +74,7 @@ public abstract class LastBattlesLoaderService implements LastBattlesLoader{
 						alreadyLoaded.removeAll(alreadyLoaded.stream()
 								.filter(b -> b.getPlayers().stream().noneMatch(p -> p.getPosition() != 0)).collect(Collectors.toList()));
 						lastBattles.removeAll(alreadyLoaded);
-						System.out.println("Loaded " + lastBattles.size()+comment());
+						System.out.println("Loaded " + lastBattles.size() + comment());
 						alreadyLoaded.addAll(lastBattles);
 						
 						observable.setValue(alreadyLoaded);

@@ -7,6 +7,7 @@ import org.apache.commons.logging.LogFactory;
 
 import fr.egaetan.cgbench.Gui;
 import fr.egaetan.cgbench.api.LeaderboardApi;
+import fr.egaetan.cgbench.api.LeaderboardChallengeApi;
 import fr.egaetan.cgbench.api.LeaderboardLeagueApi;
 import fr.egaetan.cgbench.api.TestSessionApi;
 import fr.egaetan.cgbench.api.param.LeaderboardParam;

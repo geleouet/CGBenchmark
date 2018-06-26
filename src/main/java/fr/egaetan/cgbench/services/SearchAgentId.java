@@ -20,9 +20,9 @@ public class SearchAgentId {
 
 	final LeaderboardApi api;
 
-	public SearchAgentId(LeaderboardApi api) {
+	public SearchAgentId(LeaderboardApi leaderboardApi) {
 		super();
-		this.api = api;
+		this.api = leaderboardApi;
 	}
 
 	public String searchFor(String game, String userName) {
