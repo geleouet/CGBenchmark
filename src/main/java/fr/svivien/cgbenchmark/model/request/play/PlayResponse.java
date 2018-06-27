@@ -27,7 +27,9 @@ public class PlayResponse {
 
     public class PlayResponseSuccess {
         public List<Integer> scores;
+        public List<Integer> ranks;
         public List<Frame> frames;
         public long gameId;
+        public String refereeInput;
     }
 }

@@ -3,6 +3,7 @@ package fr.svivien.cgbenchmark;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -11,8 +12,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -38,31 +40,21 @@ import fr.svivien.cgbenchmark.model.config.EnemyConfiguration;
 import fr.svivien.cgbenchmark.model.config.GlobalConfiguration;
 import fr.svivien.cgbenchmark.model.request.login.LoginRequest;
 import fr.svivien.cgbenchmark.model.request.login.LoginResponse;
+import fr.svivien.cgbenchmark.model.request.play.PlayResponse;
+import fr.svivien.cgbenchmark.model.request.play.PlayResponse.Frame;
 import fr.svivien.cgbenchmark.model.request.session.SessionRequest;
 import fr.svivien.cgbenchmark.model.request.session.SessionResponse;
 import fr.svivien.cgbenchmark.model.test.ResultWrapper;
 import fr.svivien.cgbenchmark.model.test.TestInput;
 import fr.svivien.cgbenchmark.producerconsumer.Broker;
 import fr.svivien.cgbenchmark.producerconsumer.Consumer;
+import fr.svivien.cgbenchmark.producerconsumer.PlayResultListener;
 import okhttp3.Cookie;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import retrofit2.Call;
 import retrofit2.GsonConverterFactory;
 import retrofit2.Retrofit;
-
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
 public class CGBenchmark {
 
@@ -75,14 +67,16 @@ public class CGBenchmark {
     private EnemyConfiguration me = new EnemyConfiguration(-1, "[ME]");
     private AtomicBoolean pause = new AtomicBoolean(false);
     SessionLogIn loginSession = new SessionLogIn();
-
+    private final PlayResultListener playsListener;
+    
+    
     public CGBenchmark(String cfgFilePath, boolean saveLogs) {
-    	this(readConfigurationFile(cfgFilePath));
+    	this(readConfigurationFile(cfgFilePath), saveLogs ? (i, r) -> CGBenchmark.dumpLogForPlay(i, r) : (a,b) -> {/**/});
     	globalConfiguration.setSaveLogs(saveLogs);
     	// Parsing configuration file
     	try {
     		globalConfiguration = parseConfigurationFile(cfgFilePath);
-    		checkConfiguration(globalConfiguration);
+    		globalConfiguration.checkConfiguration();
     	} catch (UnsupportedEncodingException | FileNotFoundException | JsonIOException | JsonSyntaxException e) {
     		LOG.fatal("Failed to parse configuration file", e);
     		System.exit(1);
@@ -91,9 +85,9 @@ public class CGBenchmark {
     		System.exit(1);
     	}
     }
-    public CGBenchmark(GlobalConfiguration globalConfiguration) {
+    public CGBenchmark(GlobalConfiguration globalConfiguration, PlayResultListener playsListener) {
     	this.globalConfiguration = globalConfiguration;
-    	
+		this.playsListener = playsListener;
     	createAccountConsumers();
 	}
     
@@ -106,7 +100,8 @@ public class CGBenchmark {
                 LOG.fatal("Error while retrieving account cookie and session", e);
                 System.exit(1);
             }
-            accountConsumerList.add(new Consumer(accountCfg.getAccountName(), testBroker, accountCfg.getAccountCookie(), accountCfg.getAccountIde(), globalConfiguration.getRequestCooldown(), pause, globalConfiguration.isSaveLogs()));
+            accountConsumerList.add(
+            		new Consumer(accountCfg.getAccountName(), testBroker, accountCfg.getAccountCookie(), accountCfg.getAccountIde(), globalConfiguration.getRequestCooldown(), pause, playsListener));
             LOG.info("Account " + accountCfg.getAccountName() + " successfully registered");
         }
 	}
@@ -253,9 +248,8 @@ public class CGBenchmark {
             sessionResponse = sessionCall.execute();
             if (globalConfiguration.isContest()) {
                 return sessionResponse.body().success.testSessionHandle;
-            } else {
-                return sessionResponse.body().success.handle;
-            }
+            } 
+            return sessionResponse.body().success.handle;
 
         } catch (IOException | RuntimeException e) {
             throw new IllegalStateException("Session request failed");
@@ -347,50 +341,6 @@ public class CGBenchmark {
         return selectedPlayers;
     }
     
-    private void checkConfiguration(GlobalConfiguration globalConfiguration) throws IllegalArgumentException {
-        // Checks if every code file exists
-        for (CodeConfiguration codeCfg : globalConfiguration.getCodeConfigurationList()) {
-            if (!Files.isReadable(Paths.get(codeCfg.getSourcePath()))) {
-                throw new IllegalArgumentException("Cannot read " + codeCfg.getSourcePath());
-            }
-        }
-
-        // Checks write permission for final reports
-        if (!Files.isWritable(Paths.get(""))) {
-            throw new IllegalArgumentException("Cannot write in current directory");
-        }
-
-        // Checks account number
-        if (globalConfiguration.getAccountConfigurationList().isEmpty()) {
-            throw new IllegalArgumentException("You must provide at least one valid account");
-        }
-
-        // Checks that no account field is missing
-        for (AccountConfiguration accountCfg : globalConfiguration.getAccountConfigurationList()) {
-            if (accountCfg.getAccountName() == null) {
-                throw new IllegalArgumentException("You must provide account name");
-            }
-            if (accountCfg.getAccountLogin() == null || accountCfg.getAccountPassword() == null) {
-                throw new IllegalArgumentException("You must provide account login/pwd");
-            }
-        }
-
-        // Checks that there are seeds to test
-        if (!globalConfiguration.getRandomSeed() && globalConfiguration.getSeedList().isEmpty()) {
-            throw new IllegalArgumentException("You must provide some seeds or enable randomSeed");
-        }
-
-        // Checks that there is a fixed seed list when playing with every starting position configuration
-        if (globalConfiguration.getRandomSeed() && globalConfiguration.isEveryPositionConfiguration()) {
-            throw new IllegalArgumentException("Playing each seed with swapped positions requires fixed seed list");
-        }
-
-        // Checks player position
-        if (globalConfiguration.getPlayerPosition() == null || globalConfiguration.getPlayerPosition() < -2 || globalConfiguration.getPlayerPosition() > 3) {
-            throw new IllegalArgumentException("You must provide a valid player position (-1, 0 or 1)");
-        }
-    }
-
     private static GlobalConfiguration parseConfigurationFile(String cfgFilePath) throws UnsupportedEncodingException, FileNotFoundException {
         LOG.info("Loading configuration file : " + cfgFilePath);
         Gson gson = new Gson();
@@ -407,6 +357,58 @@ public class CGBenchmark {
         this.pause.set(false);
     }
 
+    
+    private static void dumpLogForPlay(TestInput test, PlayResponse response) {
+        if (response.success == null) {
+            // Nothing to log
+            return;
+        }
+
+        // gameId as filename
+        final String fileName = "." + File.separator + "logs" + File.separator + response.success.gameId + ".log";
+
+        StringBuilder logStringBuilder = new StringBuilder();
+
+        for (int iframe = 0; iframe < response.success.frames.size(); iframe++) {
+            Frame currentFrame = response.success.frames.get(iframe);
+            String logHeader = "----- " + iframe + " / " + response.success.frames.size() + " -----" + System.lineSeparator();
+
+            if (currentFrame.error != null) { // Error frame
+                logStringBuilder.append(logHeader);
+                logStringBuilder.append("ERROR at line " + currentFrame.error.line + ":" + System.lineSeparator());
+                logStringBuilder.append(currentFrame.error.message);
+                logStringBuilder.append(System.lineSeparator());
+            } else if (currentFrame.gameInformation.contains(Constants.TIMEOUT_INFORMATION_PART)) { // Timeout frame
+                logStringBuilder.append(logHeader);
+                logStringBuilder.append(test.getPlayers().get(currentFrame.agentId).getName() + " TIMEOUT !");
+                logStringBuilder.append(System.lineSeparator());
+            } else if (currentFrame.stderr != null && test.getPlayers().get(currentFrame.agentId).getAgentId() == -1) { // Regular frame
+                logStringBuilder.append(logHeader);
+                logStringBuilder.append(currentFrame.stderr);
+                logStringBuilder.append(System.lineSeparator());
+            }
+        }
+
+        // If nothing has been logged, we avoid creating an empty file
+        if (logStringBuilder.length() > 0) {
+            // Creates folder and file
+            try {
+                Path pathToFile = Paths.get(fileName);
+                Files.createDirectories(pathToFile.getParent());
+                Files.createFile(pathToFile);
+            } catch (IOException ex) {
+                LOG.error("Unable to create log file for " + response.success.gameId, ex);
+            }
+
+            // Writes content to file
+            try (FileWriter fw = new FileWriter(fileName)) {
+                fw.write(logStringBuilder.toString());
+                fw.flush();
+            } catch (IOException ex) {
+                LOG.error("Unable to write log file for " + response.success.gameId, ex);
+            }
+        }
+    }
     
     
 }

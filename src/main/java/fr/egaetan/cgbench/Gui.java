@@ -83,6 +83,8 @@ import fr.svivien.cgbenchmark.CGBenchmark;
 import fr.svivien.cgbenchmark.Constants;
 import fr.svivien.cgbenchmark.model.config.AccountConfiguration;
 import fr.svivien.cgbenchmark.model.config.GlobalConfiguration;
+import fr.svivien.cgbenchmark.model.request.play.PlayResponse;
+import fr.svivien.cgbenchmark.model.test.TestInput;
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Call;
@@ -233,7 +235,7 @@ public class Gui {
 		mainFrame = new JFrame("CGBenchmark");
 		mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
-		confPane = new ConfPanel(multisConfig, new SearchAgentId(leaderboardApi), batchRunner(mainFrame), currentGame, currentLogin);
+		confPane = new ConfPanel(multisConfig, new SearchAgentId(leaderboardApi), batchRunner(), currentGame, currentLogin);
 		confPane.buildConfPane();
 		
 		JPanel arena = buildArenaPane();
@@ -439,7 +441,7 @@ public class Gui {
 				);
 	}
 
-	private BatchRun batchRunner(JFrame mainFrame) {
+	private BatchRun batchRunner() {
 		BatchRun runBatch = new BatchRun() {
 			private final Log LOG = LogFactory.getLog(BatchRun.class);
 
@@ -452,7 +454,7 @@ public class Gui {
 					JOptionPane.showMessageDialog(mainFrame, e.getMessage(), "Illegal configuration", JOptionPane.ERROR_MESSAGE);
 					return;
 				}
-				CGBenchmark bench = new CGBenchmark(config);
+				CGBenchmark bench = new CGBenchmark(config, Gui.this::consumeMatch);
 				
 				// TODO Ajouter un tabPannel de résultat
 				
@@ -462,6 +464,10 @@ public class Gui {
 		return runBatch;
 	}
 
+	
+	void consumeMatch(TestInput test, PlayResponse response) {
+		System.out.println("---");
+	}
 
 	private static MultisConfig readMultisList() {
 		try {

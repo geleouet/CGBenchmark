@@ -41,16 +41,15 @@ public class Consumer implements Runnable {
     private String cookie;
     private String ide;
     private int cooldown;
-    private boolean saveLogs;
     private long globalStartTime = 0;
     private long totalTestNumber = 0;
     private long totalPauseDuration = 0;
-
+    private final PlayResultListener listener;
     private static final String outputFormat = "[ %10s ]%s";
 
     private AtomicBoolean pause;
 
-    public Consumer(String name, Broker broker, String cookie, String ide, int cooldown, AtomicBoolean pause, boolean saveLogs) {
+    public Consumer(String name, Broker broker, String cookie, String ide, int cooldown, AtomicBoolean pause, PlayResultListener listener) {
         this.cookie = cookie;
         this.ide = ide;
         this.name = name;
@@ -60,7 +59,7 @@ public class Consumer implements Runnable {
         this.retrofit = new Retrofit.Builder().client(client).baseUrl(Constants.CG_HOST).addConverterFactory(GsonConverterFactory.create()).build();
         this.cgPlayApi = retrofit.create(CGPlayApi.class);
         this.cooldown = cooldown;
-        this.saveLogs = saveLogs;
+        this.listener = listener;
     }
 
     @Override
@@ -132,64 +131,12 @@ public class Consumer implements Runnable {
         }
     }
 
-    private void dumpLogForPlay(TestInput test, PlayResponse response) {
-        if (response.success == null) {
-            // Nothing to log
-            return;
-        }
-
-        // gameId as filename
-        final String fileName = "." + File.separator + "logs" + File.separator + response.success.gameId + ".log";
-
-        StringBuilder logStringBuilder = new StringBuilder();
-
-        for (int iframe = 0; iframe < response.success.frames.size(); iframe++) {
-            Frame currentFrame = response.success.frames.get(iframe);
-            String logHeader = "----- " + iframe + " / " + response.success.frames.size() + " -----" + System.lineSeparator();
-
-            if (currentFrame.error != null) { // Error frame
-                logStringBuilder.append(logHeader);
-                logStringBuilder.append("ERROR at line " + currentFrame.error.line + ":" + System.lineSeparator());
-                logStringBuilder.append(currentFrame.error.message);
-                logStringBuilder.append(System.lineSeparator());
-            } else if (currentFrame.gameInformation.contains(Constants.TIMEOUT_INFORMATION_PART)) { // Timeout frame
-                logStringBuilder.append(logHeader);
-                logStringBuilder.append(test.getPlayers().get(currentFrame.agentId).getName() + " TIMEOUT !");
-                logStringBuilder.append(System.lineSeparator());
-            } else if (currentFrame.stderr != null && test.getPlayers().get(currentFrame.agentId).getAgentId() == -1) { // Regular frame
-                logStringBuilder.append(logHeader);
-                logStringBuilder.append(currentFrame.stderr);
-                logStringBuilder.append(System.lineSeparator());
-            }
-        }
-
-        // If nothing has been logged, we avoid creating an empty file
-        if (logStringBuilder.length() > 0) {
-            // Creates folder and file
-            try {
-                Path pathToFile = Paths.get(fileName);
-                Files.createDirectories(pathToFile.getParent());
-                Files.createFile(pathToFile);
-            } catch (IOException ex) {
-                LOG.error("Unable to create log file for " + response.success.gameId, ex);
-            }
-
-            // Writes content to file
-            try (FileWriter fw = new FileWriter(fileName)) {
-                fw.write(logStringBuilder.toString());
-                fw.flush();
-            } catch (IOException ex) {
-                LOG.error("Unable to write log file for " + response.success.gameId, ex);
-            }
-        }
-    }
-
     private TestOutput testCode(CGPlayApi cgPlayApi, TestInput test) {
         PlayRequest request = new PlayRequest(test.getCode(), test.getLang(), ide, test.getSeed(), test.getPlayers());
         Call<PlayResponse> call = cgPlayApi.play(request, Constants.CG_HOST + "/ide/" + ide, cookie);
         try {
             PlayResponse playResponse = call.execute().body();
-            if (saveLogs) dumpLogForPlay(test, playResponse);
+            listener.consume(test, playResponse);
             TestOutput testOutput = new TestOutput(test, playResponse);
 			return testOutput;
         } catch (IOException | RuntimeException e) {
