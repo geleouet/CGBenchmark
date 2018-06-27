@@ -180,4 +180,8 @@ public class GlobalConfiguration {
 	        throw new IllegalArgumentException("You must provide a valid player position (-1, 0 or 1)");
 	    }
 	}
+
+	public void setIsContest(Boolean isContest) {
+		this.isContest = isContest;
+	}
 }

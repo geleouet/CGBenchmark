@@ -716,7 +716,7 @@ public class ConfPanel {
 		config.setAccountConfigurationList(new ArrayList<>());
 		config.setCodeConfigurationList(code_configs);
 		config.setSeedList(new ArrayList<>());
-
+		config.setIsContest(currentGame.getValue().isChallenge());
 		config.getAccountConfigurationList().add(accountConfiguration());
 
 		config.setMaxEnemiesNumber((Integer) maxEnnemies.getSelectedItem());
