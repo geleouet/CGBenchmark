@@ -1,5 +1,6 @@
 package fr.svivien.cgbenchmark;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -134,11 +135,18 @@ public class CGBenchmark {
                 resultWrapper.finishReport();
 
                 // Write report to external file
-                String reportFileName = codeName;
+                File reportsDir = new File("./reports");
+        		if (!reportsDir.exists()) {
+        			reportsDir.mkdirs();
+        		}
+                
+                String reportFileName = "./reports/" + codeName;
                 for (EnemyConfiguration ec : codeCfg.getEnemies()) {
                     codeName += "-" + ec.getName() + "_" + ec.getAgentId();
                 }
                 reportFileName += "-" + resultWrapper.getShortFilenameWinrate() + ".txt";
+                
+                
                 LOG.info("Writing final report to : " + reportFileName);
                 try (PrintWriter out = new PrintWriter(reportFileName)) {
                     out.println(resultWrapper.getReportBuilder().toString());

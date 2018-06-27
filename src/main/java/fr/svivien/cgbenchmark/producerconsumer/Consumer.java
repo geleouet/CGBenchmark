@@ -1,5 +1,6 @@
 package fr.svivien.cgbenchmark.producerconsumer;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -129,8 +130,14 @@ public class Consumer implements Runnable {
     		return;
     	}
     	
+    	
+    	File resultsDir = new File("./results");
+		if (!resultsDir.exists()) {
+			resultsDir.mkdirs();
+		}
+    	
     	// gameId as filename
-    	final String fileName = "./result" + response.success.gameId + ".log";
+    	final String fileName = "./results/result" + response.success.gameId + ".log";
 
     	try (FileWriter fw = new FileWriter(fileName)) {
     		for (int iframe = 0; iframe < response.success.frames.size(); iframe++) {

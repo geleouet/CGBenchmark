@@ -22,3 +22,5 @@ dependency-reduced-pom.xml
 /bin/
 config.json
 /avatars/
+/reports/
+/results/
