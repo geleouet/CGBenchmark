@@ -8,7 +8,7 @@ public class SessionResponse {
     public SessionResponseSuccess success;
 
     public class SessionResponseSuccess {
-        public String handle;
-        public String testSessionHandle;
+        public String handle; // handle for puzzles
+        public String testSessionHandle; // handle for contests
     }
 }

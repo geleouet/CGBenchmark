@@ -7,5 +7,7 @@ public class Constants {
     public static final String JSESSIONID = "JSESSIONID";
     public static final String SET_COOKIE = "Set-Cookie";
     public static final String TIMEOUT_INFORMATION_PART = "Timeout:";
+    public static final String CONTEST_SESSION_SERVICE_URL = "/services/ChallengeCandidateRemoteService/findChallengerByChallenge";
+    public static final String PUZZLE_SESSION_SERVICE_URL = "/services/PuzzleRemoteService/generateSessionFromPuzzlePrettyId";
 
 }

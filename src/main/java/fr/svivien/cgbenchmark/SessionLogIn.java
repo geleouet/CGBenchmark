@@ -75,7 +75,10 @@ public class SessionLogIn {
 	
 	    SessionApi sessionApi = retrofit.create(SessionApi.class);
 	    SessionRequest sessionRequest = new SessionRequest(loginResponse.body().success.userId, multiName);
-	    Call<SessionResponse> sessionCall = sessionApi.getSessionHandle(sessionRequest, Constants.CG_HOST + "/puzzle/" + multiName, accountCfg.getAccountCookie());
+	    boolean isContest = false;
+	    Call<SessionResponse> sessionCall = sessionApi.getSessionHandle(isContest ? Constants.CONTEST_SESSION_SERVICE_URL : Constants.PUZZLE_SESSION_SERVICE_URL, sessionRequest, Constants.CG_HOST, accountCfg.getAccountCookie());
+
+//	    Call<SessionResponse> sessionCall = sessionApi.getSessionHandle(sessionRequest, Constants.CG_HOST + "/puzzle/" + multiName, accountCfg.getAccountCookie());
 	    retrofit2.Response<SessionResponse> sessionResponse;
 	    try {
 	        sessionResponse = sessionCall.execute();

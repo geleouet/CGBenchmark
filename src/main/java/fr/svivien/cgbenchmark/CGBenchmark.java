@@ -30,14 +30,39 @@ import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 
+import fr.svivien.cgbenchmark.api.LoginApi;
+import fr.svivien.cgbenchmark.api.SessionApi;
 import fr.svivien.cgbenchmark.model.config.AccountConfiguration;
 import fr.svivien.cgbenchmark.model.config.CodeConfiguration;
 import fr.svivien.cgbenchmark.model.config.EnemyConfiguration;
 import fr.svivien.cgbenchmark.model.config.GlobalConfiguration;
+import fr.svivien.cgbenchmark.model.request.login.LoginRequest;
+import fr.svivien.cgbenchmark.model.request.login.LoginResponse;
+import fr.svivien.cgbenchmark.model.request.session.SessionRequest;
+import fr.svivien.cgbenchmark.model.request.session.SessionResponse;
 import fr.svivien.cgbenchmark.model.test.ResultWrapper;
 import fr.svivien.cgbenchmark.model.test.TestInput;
 import fr.svivien.cgbenchmark.producerconsumer.Broker;
 import fr.svivien.cgbenchmark.producerconsumer.Consumer;
+import okhttp3.Cookie;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import retrofit2.Call;
+import retrofit2.GsonConverterFactory;
+import retrofit2.Retrofit;
+
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class CGBenchmark {
 
@@ -51,10 +76,21 @@ public class CGBenchmark {
     private AtomicBoolean pause = new AtomicBoolean(false);
     SessionLogIn loginSession = new SessionLogIn();
 
-    public CGBenchmark(String cfgFilePath) {
-        this(readConfigurationFile(cfgFilePath));
+    public CGBenchmark(String cfgFilePath, boolean saveLogs) {
+    	this(readConfigurationFile(cfgFilePath));
+    	globalConfiguration.setSaveLogs(saveLogs);
+    	// Parsing configuration file
+    	try {
+    		globalConfiguration = parseConfigurationFile(cfgFilePath);
+    		checkConfiguration(globalConfiguration);
+    	} catch (UnsupportedEncodingException | FileNotFoundException | JsonIOException | JsonSyntaxException e) {
+    		LOG.fatal("Failed to parse configuration file", e);
+    		System.exit(1);
+    	} catch (IllegalArgumentException e) {
+    		LOG.fatal("Configuration is invalid", e);
+    		System.exit(1);
+    	}
     }
-
     public CGBenchmark(GlobalConfiguration globalConfiguration) {
     	this.globalConfiguration = globalConfiguration;
     	
@@ -70,7 +106,7 @@ public class CGBenchmark {
                 LOG.fatal("Error while retrieving account cookie and session", e);
                 System.exit(1);
             }
-            accountConsumerList.add(new Consumer(accountCfg.getAccountName(), testBroker, accountCfg.getAccountCookie(), accountCfg.getAccountIde(), globalConfiguration.getRequestCooldown(), pause));
+            accountConsumerList.add(new Consumer(accountCfg.getAccountName(), testBroker, accountCfg.getAccountCookie(), accountCfg.getAccountIde(), globalConfiguration.getRequestCooldown(), pause, globalConfiguration.isSaveLogs()));
             LOG.info("Account " + accountCfg.getAccountName() + " successfully registered");
         }
 	}
@@ -107,11 +143,12 @@ public class CGBenchmark {
             Path p = Paths.get(codeCfg.getSourcePath());
             String codeName = p.getFileName().toString();
 
-            // Brand new resultWrapper for this test
-            ResultWrapper resultWrapper = new ResultWrapper(codeCfg);
-
             try {
                 createTests(codeCfg);
+
+                // Brand new resultWrapper for this test
+                ResultWrapper resultWrapper = new ResultWrapper(codeCfg, accountConsumerList, testBroker.getTestSize());
+                accountConsumerList.stream().forEach(Consumer::resetDurationStats);
 
                 String logStr = "Launching " + testBroker.getTestSize() + " tests " + codeName + " against";
                 for (EnemyConfiguration ec : codeCfg.getEnemies()) {
@@ -121,13 +158,12 @@ public class CGBenchmark {
 
                 // Adding consumers in the thread-pool and wiring fresh new resultWrapper
                 for (Consumer consumer : accountConsumerList) {
-                    consumer.setResultWrapper(resultWrapper);
                     threadPool.execute(consumer);
                 }
 
                 // Unleash the executor
                 threadPool.shutdown();
-                threadPool.awaitTermination(5, TimeUnit.DAYS);
+                threadPool.awaitTermination(5, TimeUnit.DAYS); // If 5 days is not enough, you're doing it wrong
 
                 LOG.info("Final results :" + resultWrapper.getWinrateDetails());
 
@@ -163,13 +199,75 @@ public class CGBenchmark {
         LOG.info("No more tests. Ending.");
     }
 
+    private void retrieveAccountCookieAndSession(AccountConfiguration accountCfg) {
+        LOG.info("Retrieving cookie and session for account " + accountCfg.getAccountName());
+
+        OkHttpClient client = new OkHttpClient.Builder().readTimeout(600, TimeUnit.SECONDS).build();
+        Retrofit retrofit = new Retrofit.Builder().client(client).baseUrl(Constants.CG_HOST).addConverterFactory(GsonConverterFactory.create()).build();
+        LoginApi loginApi = retrofit.create(LoginApi.class);
+
+        LoginRequest loginRequest = new LoginRequest(accountCfg.getAccountLogin(), accountCfg.getAccountPassword());
+        Call<LoginResponse> loginCall = loginApi.login(loginRequest);
+
+        // Calling getSessionHandle API
+        retrofit2.Response<LoginResponse> loginResponse;
+        try {
+            loginResponse = loginCall.execute();
+        } catch (IOException | RuntimeException e) {
+            throw new IllegalStateException("Login request failed");
+        }
+
+        if (loginResponse.body().success == null || loginResponse.body().success.userId == null) {
+            throw new IllegalStateException("Login failed, please check login/pwd in configuration");
+        }
+
+        // Selecting appropriate cookie; we keep the one that expires the later
+        Optional<Cookie> optCookie = loginResponse.headers().values(Constants.SET_COOKIE).stream()
+                .map(c -> Cookie.parse(HttpUrl.parse(Constants.CG_HOST), c))
+                .filter(c -> c.name().equals(Constants.REMCG) && c.expiresAt() > new Date().getTime())
+                .sorted((a, b) -> (int) (b.expiresAt() - a.expiresAt()))
+                .findFirst();
+
+        if (!optCookie.isPresent()) {
+            throw new IllegalStateException("Cannot find required cookie in getSessionHandle response");
+        }
+
+        // Setting the cookie in the account configuration
+        accountCfg.setAccountCookie(optCookie.get().toString());
+
+        // Retrieving IDE handle
+        String handle = retrieveHandle(retrofit, loginResponse.body().success.userId, accountCfg.getAccountCookie());
+
+        // Setting the IDE session in the account configuration
+        accountCfg.setAccountIde(handle);
+    }
+
+    private String retrieveHandle(Retrofit retrofit, Integer userId, String accountCookie) {
+        SessionApi sessionApi = retrofit.create(SessionApi.class);
+        SessionRequest sessionRequest = new SessionRequest(userId, globalConfiguration.getMultiName(), globalConfiguration.isContest());
+        Call<SessionResponse> sessionCall;
+        sessionCall = sessionApi.getSessionHandle(globalConfiguration.isContest() ? Constants.CONTEST_SESSION_SERVICE_URL : Constants.PUZZLE_SESSION_SERVICE_URL, sessionRequest, Constants.CG_HOST, accountCookie);
+
+        retrofit2.Response<SessionResponse> sessionResponse;
+        try {
+            sessionResponse = sessionCall.execute();
+            if (globalConfiguration.isContest()) {
+                return sessionResponse.body().success.testSessionHandle;
+            } else {
+                return sessionResponse.body().success.handle;
+            }
+
+        } catch (IOException | RuntimeException e) {
+            throw new IllegalStateException("Session request failed");
+        }
+    }
+
     private void createTests(CodeConfiguration codeCfg) throws IOException, InterruptedException {
         String codeContent = new String(Files.readAllBytes(Paths.get(codeCfg.getSourcePath())));
+        rnd.setSeed(2820027331L); /** More arbitrary values ... */
 
         // Filling the broker with all the tests
         for (int replay = 0; replay < codeCfg.getNbReplays(); replay++) {
-            rnd.setSeed(28731L); /** More arbitrary values ... */
-
             if (globalConfiguration.getRandomSeed()) {
                 List<EnemyConfiguration> selectedPlayers = getRandomEnemies(codeCfg);
                 int myStartingPosition = globalConfiguration.isSingleRandomStartPosition() ? rnd.nextInt(selectedPlayers.size() + 1) : globalConfiguration.getPlayerPosition();
@@ -224,12 +322,72 @@ public class CGBenchmark {
     }
 
     private List<EnemyConfiguration> getRandomEnemies(CodeConfiguration codeCfg) {
-        List<EnemyConfiguration> selectedPlayers = codeCfg.getEnemies().stream().collect(Collectors.toList());
-        Collections.shuffle(selectedPlayers, rnd);
-        if (globalConfiguration.getEnemiesNumberDelta() > 0) {
-            return selectedPlayers.subList(0, globalConfiguration.getMinEnemiesNumber() + rnd.nextInt(globalConfiguration.getEnemiesNumberDelta() + 1));
-        } else {
-            return selectedPlayers.subList(0, globalConfiguration.getMinEnemiesNumber());
+        List<EnemyConfiguration> selectedPlayers = new ArrayList<>();
+
+        List<EnemyConfiguration> playerPool = codeCfg.getEnemies().stream().collect(Collectors.toList());
+        int pickSize = globalConfiguration.getMinEnemiesNumber() + rnd.nextInt(globalConfiguration.getEnemiesNumberDelta() + 1);
+
+        for (int i = 0; i < pickSize; i++) {
+            playerPool.stream().forEach(p -> p.setWeight(1D / Math.pow(p.getPicked() + 1, 3D)));
+            double totalWeight = playerPool.stream().mapToDouble(EnemyConfiguration::getWeight).sum();
+            playerPool.sort((a, b) -> b.getWeight().compareTo(a.getWeight()));
+            double randomWeight = rnd.nextDouble() * totalWeight;
+            double sumWeight = 0;
+            for (EnemyConfiguration e : playerPool) {
+                sumWeight += e.getWeight();
+                if (sumWeight >= randomWeight) {
+                    e.incrementPicked();
+                    selectedPlayers.add(e);
+                    playerPool.remove(e);
+                    break;
+                }
+            }
+        }
+
+        return selectedPlayers;
+    }
+    
+    private void checkConfiguration(GlobalConfiguration globalConfiguration) throws IllegalArgumentException {
+        // Checks if every code file exists
+        for (CodeConfiguration codeCfg : globalConfiguration.getCodeConfigurationList()) {
+            if (!Files.isReadable(Paths.get(codeCfg.getSourcePath()))) {
+                throw new IllegalArgumentException("Cannot read " + codeCfg.getSourcePath());
+            }
+        }
+
+        // Checks write permission for final reports
+        if (!Files.isWritable(Paths.get(""))) {
+            throw new IllegalArgumentException("Cannot write in current directory");
+        }
+
+        // Checks account number
+        if (globalConfiguration.getAccountConfigurationList().isEmpty()) {
+            throw new IllegalArgumentException("You must provide at least one valid account");
+        }
+
+        // Checks that no account field is missing
+        for (AccountConfiguration accountCfg : globalConfiguration.getAccountConfigurationList()) {
+            if (accountCfg.getAccountName() == null) {
+                throw new IllegalArgumentException("You must provide account name");
+            }
+            if (accountCfg.getAccountLogin() == null || accountCfg.getAccountPassword() == null) {
+                throw new IllegalArgumentException("You must provide account login/pwd");
+            }
+        }
+
+        // Checks that there are seeds to test
+        if (!globalConfiguration.getRandomSeed() && globalConfiguration.getSeedList().isEmpty()) {
+            throw new IllegalArgumentException("You must provide some seeds or enable randomSeed");
+        }
+
+        // Checks that there is a fixed seed list when playing with every starting position configuration
+        if (globalConfiguration.getRandomSeed() && globalConfiguration.isEveryPositionConfiguration()) {
+            throw new IllegalArgumentException("Playing each seed with swapped positions requires fixed seed list");
+        }
+
+        // Checks player position
+        if (globalConfiguration.getPlayerPosition() == null || globalConfiguration.getPlayerPosition() < -2 || globalConfiguration.getPlayerPosition() > 3) {
+            throw new IllegalArgumentException("You must provide a valid player position (-1, 0 or 1)");
         }
     }
 
@@ -241,12 +399,14 @@ public class CGBenchmark {
         return gson.fromJson(reader, GlobalConfiguration.class);
     }
 
-	public void pause() {
-		this.pause.set(true);
-	}
+    public void pause() {
+        this.pause.set(true);
+    }
 
-	public void resume() {
-		this.pause.set(false);
-	}
+    public void resume() {
+        this.pause.set(false);
+    }
 
+    
+    
 }
