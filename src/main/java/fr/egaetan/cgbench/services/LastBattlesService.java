@@ -28,7 +28,7 @@ public class LastBattlesService extends LastBattlesLoaderService {
 	}
 
 	@Override
-	protected Call<SuccessLastBattles> loadGames(int paramLastGameId) {
+	protected Call<SuccessLastBattles> loadGames(long paramLastGameId) {
 		return this.testBattlesApi.load(new LastBattlesParam(""+this.currentLogin.getValue().getAccountIde(), paramLastGameId));
 	}
 

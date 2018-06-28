@@ -51,14 +51,14 @@ public abstract class LastBattlesLoaderService implements LastBattlesLoader{
 		return observable;
 	}
 
-	protected Call<SuccessLastBattles> loadGames(int lastGameId) {
+	protected Call<SuccessLastBattles> loadGames(long lastGameId) {
 		return this.testBattlesApi.load(new LastBattlesParam("", lastGameId));
 	}
 
-	protected int lastGameId() {
-		int paramLastGameId = alreadyLoaded.stream()
+	protected long lastGameId() {
+		long paramLastGameId = alreadyLoaded.stream()
 				.filter(b -> b.getPlayers().stream().anyMatch(p -> p.getPosition() != 0))
-				.max(Comparator.comparing(b -> b.getGameId())).map(b -> b.getGameId()).orElse(-1);
+				.max(Comparator.comparing(b -> b.getGameId())).map(b -> b.getGameId()).orElse(-1l);
 		return paramLastGameId;
 	}
 

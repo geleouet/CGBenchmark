@@ -2,19 +2,19 @@ package fr.egaetan.cgbench.model.leaderboard;
 
 import java.util.List;
 
-class Game {
-	int gameId;
+public class Game {
+	long gameId;
 	String refereeInput;
 	int scores[];
 	int ranks[];
 	List<User> agents;
 	Tooltip[] tooltips;
 
-	public int getGameId() {
+	public long getGameId() {
 		return gameId;
 	}
 
-	public void setGameId(int gameId) {
+	public void setGameId(long gameId) {
 		this.gameId = gameId;
 	}
 
@@ -56,6 +56,15 @@ class Game {
 
 	public void setTooltips(Tooltip[] tooltips) {
 		this.tooltips = tooltips;
+	}
+
+	public void readRanks(List<Integer> ranks$) {
+		this.ranks = ranks$.stream().mapToInt(Integer::valueOf).toArray();
+	}
+
+	public void readScores(List<Integer> scores$) {
+		this.scores = scores$.stream().mapToInt(Integer::valueOf).toArray();
+		
 	}
 
 }

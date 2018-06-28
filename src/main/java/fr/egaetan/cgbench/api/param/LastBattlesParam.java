@@ -5,7 +5,7 @@ import java.util.ArrayList;
 @SuppressWarnings("serial")
 public class LastBattlesParam extends ArrayList<String>{
 
-	public LastBattlesParam(String handle, int last) {
+	public LastBattlesParam(String handle, long last) {
 		add(handle);
 		if (last != -1) {
 			add("" + last);
@@ -16,7 +16,7 @@ public class LastBattlesParam extends ArrayList<String>{
 			
 	}
 
-	public LastBattlesParam(int agentId, int last) {
+	public LastBattlesParam(int agentId, long last) {
 		add("" + agentId);
 		if (last != -1) {
 			add("" + last);

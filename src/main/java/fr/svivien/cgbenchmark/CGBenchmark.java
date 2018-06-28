@@ -258,6 +258,7 @@ public class CGBenchmark {
 
     private void createTests(CodeConfiguration codeCfg) throws IOException, InterruptedException {
         String codeContent = new String(Files.readAllBytes(Paths.get(codeCfg.getSourcePath())));
+        String codeName = Paths.get(codeCfg.getSourcePath()).getFileName().toFile().getName();
         rnd.setSeed(2820027331L); /** More arbitrary values ... */
 
         // Filling the broker with all the tests
@@ -265,35 +266,34 @@ public class CGBenchmark {
             if (globalConfiguration.getRandomSeed()) {
                 List<EnemyConfiguration> selectedPlayers = getRandomEnemies(codeCfg);
                 int myStartingPosition = globalConfiguration.isSingleRandomStartPosition() ? rnd.nextInt(selectedPlayers.size() + 1) : globalConfiguration.getPlayerPosition();
-                addTestFixedPosition(selectedPlayers, replay, null, codeContent, codeCfg.getLanguage(), myStartingPosition);
+                addTestFixedPosition(selectedPlayers, replay, null, codeContent, codeCfg.getLanguage(), myStartingPosition, codeName);
             } else {
                 for (int testNumber = 0; testNumber < globalConfiguration.getSeedList().size(); testNumber++) {
                     List<EnemyConfiguration> selectedPlayers = getRandomEnemies(codeCfg);
                     String seed = SeedCleaner.cleanSeed(globalConfiguration.getSeedList().get(testNumber), globalConfiguration.getMultiName(), selectedPlayers.size() + 1);
                     if (globalConfiguration.isEveryPositionConfiguration()) {
-                        addTestAllPermutations(selectedPlayers, testNumber, seed, codeContent, codeCfg.getLanguage());
+                        addTestAllPermutations(selectedPlayers, testNumber, seed, codeContent, codeCfg.getLanguage(), codeName);
                     } else {
                         int myStartingPosition = globalConfiguration.isSingleRandomStartPosition() ? rnd.nextInt(selectedPlayers.size() + 1) : globalConfiguration.getPlayerPosition();
-                        addTestFixedPosition(selectedPlayers, testNumber, seed, codeContent, codeCfg.getLanguage(), myStartingPosition);
+                        addTestFixedPosition(selectedPlayers, testNumber, seed, codeContent, codeCfg.getLanguage(), myStartingPosition, codeName);
                     }
                 }
             }
         }
     }
 
-    private void addTestAllPermutations(List<EnemyConfiguration> selectedPlayers, int seedNumber, String seed, String codeContent, String lang) throws InterruptedException {
+    private void addTestAllPermutations(List<EnemyConfiguration> selectedPlayers, int seedNumber, String seed, String codeContent, String lang, String codeName) throws InterruptedException {
         List<EnemyConfiguration> players = selectedPlayers.stream().collect(Collectors.toList());
         players.add(me);
         List<List<EnemyConfiguration>> permutations = generatePermutations(players);
         for (List<EnemyConfiguration> permutation : permutations) {
-            testBroker.queue.put(new TestInput(seedNumber, seed, codeContent, lang, permutation));
-        }
+            testBroker.queue.put(new TestInput(seedNumber, seed, codeContent, lang, permutation, codeName)); }
     }
 
-    private void addTestFixedPosition(List<EnemyConfiguration> selectedPlayers, int seedNumber, String seed, String codeContent, String lang, int myStartingPosition) throws InterruptedException {
+    private void addTestFixedPosition(List<EnemyConfiguration> selectedPlayers, int seedNumber, String seed, String codeContent, String lang, int myStartingPosition, String codeName) throws InterruptedException {
         List<EnemyConfiguration> players = selectedPlayers.stream().collect(Collectors.toList());
         players.add(myStartingPosition, me);
-        testBroker.queue.put(new TestInput(seedNumber, seed, codeContent, lang, players));
+        testBroker.queue.put(new TestInput(seedNumber, seed, codeContent, lang, players, codeName));
     }
 
     private List<List<EnemyConfiguration>> generatePermutations(List<EnemyConfiguration> original) {

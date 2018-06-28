@@ -5,7 +5,7 @@ import java.util.List;
 
 public class Battle {
 	List<Player> players = new ArrayList<>(2);
-	int gameId;
+	long gameId;
 	boolean done;
 	Game game;
 
@@ -20,7 +20,7 @@ public class Battle {
 	
 	@Override
 	public int hashCode() {
-		return gameId;
+		return Long.hashCode(gameId);
 	}
 	
 	public List<Player> getPlayers() {
@@ -31,11 +31,11 @@ public class Battle {
 		this.players = players;
 	}
 
-	public int getGameId() {
+	public long getGameId() {
 		return gameId;
 	}
 
-	public void setGameId(int gameId) {
+	public void setGameId(long gameId) {
 		this.gameId = gameId;
 	}
 

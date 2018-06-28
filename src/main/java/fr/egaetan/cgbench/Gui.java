@@ -2,13 +2,14 @@ package fr.egaetan.cgbench;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dialog.ModalityType;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Image;
 import java.awt.Insets;
-import java.awt.Dialog.ModalityType;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
@@ -20,13 +21,16 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
@@ -63,7 +67,9 @@ import fr.egaetan.cgbench.api.param.LastBattlesParam;
 import fr.egaetan.cgbench.model.config.GameConfig;
 import fr.egaetan.cgbench.model.config.MultisConfig;
 import fr.egaetan.cgbench.model.leaderboard.Battle;
+import fr.egaetan.cgbench.model.leaderboard.Game;
 import fr.egaetan.cgbench.model.leaderboard.Leaderboard;
+import fr.egaetan.cgbench.model.leaderboard.Player;
 import fr.egaetan.cgbench.model.leaderboard.SuccessLastBattles;
 import fr.egaetan.cgbench.model.leaderboard.SuccessLeaderboard;
 import fr.egaetan.cgbench.model.leaderboard.User;
@@ -76,6 +82,7 @@ import fr.egaetan.cgbench.services.SearchAgentId;
 import fr.egaetan.cgbench.ui.ActionOnUser;
 import fr.egaetan.cgbench.ui.BatchRun;
 import fr.egaetan.cgbench.ui.ConfPanel;
+import fr.egaetan.cgbench.ui.DockableTabbedPane;
 import fr.egaetan.cgbench.ui.LastBattlesPane;
 import fr.egaetan.cgbench.ui.LeaderBoardPane;
 import fr.egaetan.cgbench.ui.ObservableValue;
@@ -86,7 +93,6 @@ import fr.svivien.cgbenchmark.model.config.GlobalConfiguration;
 import fr.svivien.cgbenchmark.model.request.play.PlayResponse;
 import fr.svivien.cgbenchmark.model.test.TestInput;
 import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Call;
 import retrofit2.GsonConverterFactory;
 import retrofit2.Response;
@@ -267,7 +273,7 @@ public class Gui {
 				other.setValue(user);
 				LastBattlesLoaderService lastBattlesLoaderService = new LastBattlesLoaderService(lastBattlesAgentApi::load) {
 					@Override
-					protected Call<SuccessLastBattles> loadGames(int lastGameId) {
+					protected Call<SuccessLastBattles> loadGames(long lastGameId) {
 						return this.testBattlesApi.load(new LastBattlesParam(user.getAgentId(), lastGameId));
 					}
 					
@@ -317,7 +323,7 @@ public class Gui {
 		
 		LastBattlesLoaderService lastBattlesLoaderService = new LastBattlesLoaderService(lastBattlesAgentApi::load) {
 			@Override
-			protected Call<SuccessLastBattles> loadGames(int lastGameId) {
+			protected Call<SuccessLastBattles> loadGames(long lastGameId) {
 				return this.testBattlesApi.load(new LastBattlesParam(user.getAgentId(), lastGameId));
 			}
 			
@@ -427,7 +433,7 @@ public class Gui {
 		arena.add(arenaClassement, new GridBagConstraints(0, 0, 1, 1, 1, 0., GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(02, 10, 02, 10), 0, 0));
 		arena.add(progressClassement, new GridBagConstraints(1, 0, 1, 1, 1, 0., GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(02, 10, 02, 10), 0, 0));
 		
-		JTabbedPane arenaTabs = new JTabbedPane();
+		JTabbedPane arenaTabs = new DockableTabbedPane();
 		arenaTabs.add("Leaderboard",leaderboardPane.panel());
 		arenaTabs.add("LastBattles", lastBattlesPane.panel());
 		arena.add(arenaTabs, new GridBagConstraints(0, 1, 2, 1, 1, 1, GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 0), 0, 0));
@@ -441,6 +447,8 @@ public class Gui {
 				);
 	}
 
+	
+	
 	private BatchRun batchRunner() {
 		BatchRun runBatch = new BatchRun() {
 			private final Log LOG = LogFactory.getLog(BatchRun.class);
@@ -454,19 +462,102 @@ public class Gui {
 					JOptionPane.showMessageDialog(mainFrame, e.getMessage(), "Illegal configuration", JOptionPane.ERROR_MESSAGE);
 					return;
 				}
-				CGBenchmark bench = new CGBenchmark(config, Gui.this::consumeMatch);
+				List<ObservableValue<List<Battle>>> lastBattles2 = new ArrayList<>();
+				ObservableValue<User> me$ = new ObservableValue<>();
+				User userBatch = new User();
+				userBatch.setAgentId(-1);
+				userBatch.setCodingamer(current.getValue().getCodingamer());
+				me$.setValue(userBatch);
+			
 				
-				// TODO Ajouter un tabPannel de résultat
+				DockableTabbedPane resultsTabs = new DockableTabbedPane();
+				
+				JDialog diag = new JDialog(mainFrame, "Batch...", ModalityType.MODELESS);
+				diag.getContentPane().add(resultsTabs, BorderLayout.CENTER);
+				diag.pack();
+				diag.addWindowListener(new WindowAdapter() {
+					@Override
+					public void windowClosed(WindowEvent e) {
+					}
+				});
+				diag.setVisible(true);
+				
+				
+				CGBenchmark bench = new CGBenchmark(config, (t, r) -> {
+					int indexOfTab = resultsTabs.indexOfTab(t.getCodeName());
+					if (indexOfTab != -1) {
+						Gui.this.consumeMatch(t, r, lastBattles2.get(indexOfTab));	
+					}
+					else {
+						ObservableValue<List<Battle>> newLastBattles = new ObservableValue<>();
+						newLastBattles.setValue(new ArrayList<>());
+						lastBattles2.add(newLastBattles);
+						LastBattlesPane subLastBattlesPane = new LastBattlesPane(newLastBattles, userList, me$);
+						subLastBattlesPane.buildPane();
+						subLastBattlesPane.process();
+						ObservableValue<List<User>> userList$ = new ObservableValue<>();
+						userList$.setValue(Collections.emptyList());
+						newLastBattles.addPropertyChangeListener(e -> {
+							checku(newLastBattles, userList$);
+						});
+						
+						LeaderBoardPane subLeaderboard = new LeaderBoardPane(userList$, me$, confPane.ennemiesLink(), leaderboardActions(),  
+								newLastBattles);
+						subLeaderboard.buildPane();
+						JPanel tab = new JPanel(new FlowLayout());
+						tab.add(subLastBattlesPane.panel());
+						tab.add(subLeaderboard.panel());
+						resultsTabs.add(t.getCodeName(), tab);
+						Gui.this.consumeMatch(t, r, newLastBattles);	
+					}
+				});
 				
 				new Thread(() -> bench.launch(), "Batch-Run").start();
 			}
+
 		};
 		return runBatch;
 	}
 
+	private void checku(ObservableValue<List<Battle>> newLastBattles, ObservableValue<List<User>> userList$) {
+		List<User> collect = userList.getValue().stream().filter(u -> newLastBattles.getValue().stream().anyMatch(b -> b.getPlayers().stream().anyMatch(
+				p -> (u.getCodingamer() != null 
+				&& p.getUserId() == u.getCodingamer().getUserId()) || (p.getPlayerAgentId() == u.getAgentId())))).collect(Collectors.toList());
+		userList$.setValue(collect);
+		userList$.fire();
+	}
 	
-	void consumeMatch(TestInput test, PlayResponse response) {
+	void consumeMatch(TestInput test, PlayResponse response, ObservableValue<List<Battle>> lastBattles2) {
 		System.out.println("---");
+		if (response.success != null) {
+			Game game = new Game();
+			game.setGameId(response.success.gameId);
+			game.readRanks(response.success.ranks);
+			game.readScores(response.success.scores);
+			game.setAgents(test.agents());
+			Battle b = new Battle();
+			b.setGameId(response.success.gameId);
+			b.setDone(true);
+			
+			List<Player> players = new ArrayList<>();
+			for (int i = 0; i < test.agents().size(); i++) {
+				Player p = new Player();
+				p.setPlayerAgentId(test.getPlayers().get(i).getAgentId());
+				p.setNickname(test.getPlayers().get(i).getName());
+				p.setPosition(response.success.ranks.get(i));
+				if (test.getPlayers().get(i).getAgentId() == -1) {
+					p.setUserId(current.getValue().getCodingamer().getUserId());
+					p.setNickname(test.getCodeName());
+				}
+				players.add(p);
+			}
+			players.sort(Comparator.comparing(p -> p.getPosition()));
+			b.setPlayers(players);
+			b.setGame(game);
+			
+			lastBattles2.getValue().add(b);
+			lastBattles2.fire();
+		}
 	}
 
 	private static MultisConfig readMultisList() {

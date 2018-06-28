@@ -140,6 +140,7 @@ public class Consumer implements Runnable {
             TestOutput testOutput = new TestOutput(test, playResponse);
 			return testOutput;
         } catch (IOException | RuntimeException e) {
+        	e.printStackTrace();
             TestOutput to = new TestOutput(test, null);
             return to;
         }
