@@ -11,9 +11,29 @@
 			]
 		},
 		{
+			"name": "legends-of-code-and-magic-marathon",
+			"minOpponents": 1,
+			"maxOpponents": 1,
+			"seeds": [
+				{
+					"name": "seed"
+				}
+			]
+		},
+		{
 			"name": "code-of-kutulu",
 			"minOpponents": 3,
 			"maxOpponents": 3,
+			"seeds": [
+				{
+					"name": "seed"
+				}
+			]
+		},
+		{
+			"name": "wondev-woman",
+			"minOpponents": 1,
+			"maxOpponents": 1,
 			"seeds": [
 				{
 					"name": "seed"

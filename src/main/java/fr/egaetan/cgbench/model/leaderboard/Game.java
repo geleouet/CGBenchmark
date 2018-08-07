@@ -8,7 +8,7 @@ public class Game {
 	int scores[];
 	int ranks[];
 	List<User> agents;
-	Tooltip[] tooltips;
+	String[] tooltips;
 
 	public long getGameId() {
 		return gameId;
@@ -50,11 +50,11 @@ public class Game {
 		this.agents = agents;
 	}
 
-	public Tooltip[] getTooltips() {
+	public String[] getTooltips() {
 		return tooltips;
 	}
 
-	public void setTooltips(Tooltip[] tooltips) {
+	public void setTooltips(String[] tooltips) {
 		this.tooltips = tooltips;
 	}
 

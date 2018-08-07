@@ -10,6 +10,7 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Image;
 import java.awt.Insets;
+import java.awt.event.ActionEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
@@ -32,8 +33,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
@@ -56,6 +59,7 @@ import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 
+import fr.egaetan.cgbench.api.GameApi;
 import fr.egaetan.cgbench.api.LastBattlesAgentApi;
 import fr.egaetan.cgbench.api.LastBattlesApi;
 import fr.egaetan.cgbench.api.LeaderboardApi;
@@ -63,6 +67,7 @@ import fr.egaetan.cgbench.api.LeaderboardChallengeApi;
 import fr.egaetan.cgbench.api.LeaderboardLeagueApi;
 import fr.egaetan.cgbench.api.LeaderboardMultiApi;
 import fr.egaetan.cgbench.api.TestSessionApi;
+import fr.egaetan.cgbench.api.param.GameParam;
 import fr.egaetan.cgbench.api.param.LastBattlesParam;
 import fr.egaetan.cgbench.model.config.GameConfig;
 import fr.egaetan.cgbench.model.config.MultisConfig;
@@ -70,6 +75,7 @@ import fr.egaetan.cgbench.model.leaderboard.Battle;
 import fr.egaetan.cgbench.model.leaderboard.Game;
 import fr.egaetan.cgbench.model.leaderboard.Leaderboard;
 import fr.egaetan.cgbench.model.leaderboard.Player;
+import fr.egaetan.cgbench.model.leaderboard.SuccessGame;
 import fr.egaetan.cgbench.model.leaderboard.SuccessLastBattles;
 import fr.egaetan.cgbench.model.leaderboard.SuccessLeaderboard;
 import fr.egaetan.cgbench.model.leaderboard.User;
@@ -101,6 +107,7 @@ import retrofit2.Retrofit;
 public class Gui {
 
     private static final Log LOG = LogFactory.getLog(Gui.class);
+
 
 	public static void main(String[] args) throws InvocationTargetException, InterruptedException {
 		setLAF();
@@ -135,7 +142,8 @@ public class Gui {
 	private LastBattlesPane lastBattlesPane;
 	JFrame mainFrame;
 	LastBattlesAgentApi lastBattlesAgentApi;
-	private LeaderboardApi leaderboardApi;		
+	private LeaderboardApi leaderboardApi;
+	GameApi loadGameApi;
 	
 	public Gui() {
 		currentGame = new ObservableValue<>();
@@ -187,11 +195,13 @@ public class Gui {
 //		OkHttpClient client = new OkHttpClient.Builder().addInterceptor(interceptor).readTimeout(600, TimeUnit.SECONDS).build();
 		OkHttpClient client = new OkHttpClient.Builder().readTimeout(600, TimeUnit.SECONDS).build();
 		
-		Retrofit retrofit = new Retrofit.Builder().client(client).baseUrl(Constants.CG_HOST).addConverterFactory(GsonConverterFactory.create()).build();
+		GsonConverterFactory converter = GsonConverterFactory.create();
+		Retrofit retrofit = new Retrofit.Builder().client(client).baseUrl(Constants.CG_HOST).addConverterFactory(converter).build();
 		leaderboardChallengeApi = retrofit.create(LeaderboardChallengeApi.class);
 		leaderboardMultiApi = retrofit.create(LeaderboardMultiApi.class);
 		leaderboardLeagueApi = retrofit.create(LeaderboardLeagueApi.class);
 		testSessionApi = retrofit.create(TestSessionApi.class);
+		loadGameApi = retrofit.create(GameApi.class);
 		lastBattlesAgentApi = retrofit.create(LastBattlesAgentApi.class);
 		LastBattlesApi testBattlesApi = retrofit.create(LastBattlesApi.class);
 		leaderboardApi = p -> {
@@ -251,7 +261,25 @@ public class Gui {
 
 		JSplitPane splittedLdbrd = new JSplitPane();
 		splittedLdbrd.setRightComponent(arena);
-		splittedLdbrd.setLeftComponent(new JLabel("Main"));
+		splittedLdbrd.setLeftComponent(new JButton(new AbstractAction("Main") {
+
+			private static final long serialVersionUID = 3441614445062883587L;
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				Call<SuccessGame> findByGameId = loadGameApi.findByGameId(new GameParam(329327687, 1341520), currentLogin.getValue().getAccountCookie());
+				Response<SuccessGame> execute;
+				try {
+					execute = findByGameId.execute();
+					if (execute.isSuccess()) {
+						SuccessGame game = execute.body();
+						System.out.println();
+
+					}
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+			}
+		}));
 		
 		splittedConfig.setRightComponent(splittedLdbrd);
 
