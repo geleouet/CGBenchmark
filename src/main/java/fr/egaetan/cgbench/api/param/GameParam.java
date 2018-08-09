@@ -5,7 +5,7 @@ import java.util.ArrayList;
 @SuppressWarnings("serial")
 public class GameParam extends ArrayList<String> {
 
-	public GameParam(int gameId, int agentId) {
+	public GameParam(long gameId, int agentId) {
 		add("" + gameId);
 		add("" + agentId);
 	}

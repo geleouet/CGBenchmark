@@ -2,6 +2,8 @@ package fr.egaetan.cgbench.model.leaderboard;
 
 import java.util.List;
 
+import fr.svivien.cgbenchmark.model.request.play.PlayResponse.Frame;
+
 public class Game {
 	long gameId;
 	String refereeInput;
@@ -9,6 +11,16 @@ public class Game {
 	int ranks[];
 	List<User> agents;
 	String[] tooltips;
+
+	Frame[] frames;
+
+	public Frame[] getFrames() {
+		return frames;
+	}
+
+	public void setFrames(Frame[] frames) {
+		this.frames = frames;
+	}
 
 	public long getGameId() {
 		return gameId;

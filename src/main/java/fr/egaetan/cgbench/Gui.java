@@ -29,6 +29,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -59,6 +60,7 @@ import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 
+import fr.egaetan.cgbench.analyser.locm.AnalyseReplays;
 import fr.egaetan.cgbench.api.GameApi;
 import fr.egaetan.cgbench.api.LastBattlesAgentApi;
 import fr.egaetan.cgbench.api.LastBattlesApi;
@@ -67,7 +69,6 @@ import fr.egaetan.cgbench.api.LeaderboardChallengeApi;
 import fr.egaetan.cgbench.api.LeaderboardLeagueApi;
 import fr.egaetan.cgbench.api.LeaderboardMultiApi;
 import fr.egaetan.cgbench.api.TestSessionApi;
-import fr.egaetan.cgbench.api.param.GameParam;
 import fr.egaetan.cgbench.api.param.LastBattlesParam;
 import fr.egaetan.cgbench.model.config.GameConfig;
 import fr.egaetan.cgbench.model.config.MultisConfig;
@@ -75,7 +76,6 @@ import fr.egaetan.cgbench.model.leaderboard.Battle;
 import fr.egaetan.cgbench.model.leaderboard.Game;
 import fr.egaetan.cgbench.model.leaderboard.Leaderboard;
 import fr.egaetan.cgbench.model.leaderboard.Player;
-import fr.egaetan.cgbench.model.leaderboard.SuccessGame;
 import fr.egaetan.cgbench.model.leaderboard.SuccessLastBattles;
 import fr.egaetan.cgbench.model.leaderboard.SuccessLeaderboard;
 import fr.egaetan.cgbench.model.leaderboard.User;
@@ -145,17 +145,26 @@ public class Gui {
 	private LeaderboardApi leaderboardApi;
 	GameApi loadGameApi;
 	
+	AnalyseReplays analyser;
+
 	public Gui() {
 		currentGame = new ObservableValue<>();
 		currentLogin = new ObservableValue<>();
 		current = new ObservableValue<>();
 		userList = new ObservableValue<>();
 		
+		analyser = new AnalyseReplays();
 		initListeners();
 	}
 
 	private void initListeners() {
-		scheduler = Executors.newScheduledThreadPool(1);
+		scheduler = Executors.newScheduledThreadPool(1, new ThreadFactory() {
+
+			@Override
+			public Thread newThread(Runnable r) {
+				return new Thread(r, "RefreshScheduler");
+			}
+		});
 		Runnable scheduledLeaderBoard = () -> {
 			AccountConfiguration accountConfiguration = currentLogin.getValue();
 			if (accountConfiguration == null) {
@@ -266,18 +275,7 @@ public class Gui {
 			private static final long serialVersionUID = 3441614445062883587L;
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				Call<SuccessGame> findByGameId = loadGameApi.findByGameId(new GameParam(329327687, 1341520), currentLogin.getValue().getAccountCookie());
-				Response<SuccessGame> execute;
-				try {
-					execute = findByGameId.execute();
-					if (execute.isSuccess()) {
-						SuccessGame game = execute.body();
-						System.out.println();
-
-					}
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
+				analyser.analyseReplays(current.getValue(), lastBattlesAgentApi, loadGameApi, currentLogin.getValue());
 			}
 		}));
 		
@@ -288,6 +286,10 @@ public class Gui {
 		mainFrame.setVisible(true);
 	}
 	
+	private void analyse(User user) {
+		analyser.analyseReplays(user, lastBattlesAgentApi, loadGameApi, currentLogin.getValue());
+	}
+
 	private void createSubLastBattles(User user) {
 		AtomicBoolean endRequests = new AtomicBoolean(false);
 		new SwingWorker<Void, Void>() {
@@ -345,6 +347,7 @@ public class Gui {
 		
 	}
 	
+
 	private void createSubLeaderboard(User user) {
 		ObservableValue<User> other = new ObservableValue<>();
 		other.setValue(user);
@@ -471,7 +474,7 @@ public class Gui {
 	private List<ActionOnUser> leaderboardActions() {
 		return Arrays.asList(
 				new ActionOnUser(this::createSubLeaderboard, "Show statistics..."),
-				new ActionOnUser(this::createSubLastBattles, "Show last battles...")
+				new ActionOnUser(this::createSubLastBattles, "Show last battles..."), new ActionOnUser(this::analyse, "Analyse...")
 				);
 	}
 
