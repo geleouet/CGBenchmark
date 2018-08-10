@@ -194,7 +194,7 @@ public class Gui {
 				lastBattlesService.lastBattles();
 			}
 		});
-		scheduler.scheduleAtFixedRate(scheduledLeaderBoard, 0, 30, TimeUnit.SECONDS);
+		scheduler.scheduleAtFixedRate(scheduledLeaderBoard, 10, 30, TimeUnit.SECONDS);
 	}
 	
 	
