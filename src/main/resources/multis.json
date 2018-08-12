@@ -16,7 +16,29 @@
 			"maxOpponents": 1,
 			"seeds": [
 				{
+					"name": "predefinedDraftIds"
+				},
+				{
 					"name": "seed"
+				}
+			]
+		},
+		{
+			"name": "legends-of-code-and-magic-marathon0",
+			"minOpponents": 1,
+			"maxOpponents": 1,
+			"seeds": [
+				{
+					"name": "shufflePlayer0Seed"
+				},
+				{
+					"name": "seed"
+				},
+				{
+					"name": "draftChoicesSeed"
+				},
+				{
+					"name": "shufflePlayer1Seed"
 				}
 			]
 		},

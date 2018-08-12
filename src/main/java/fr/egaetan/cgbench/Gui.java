@@ -92,11 +92,14 @@ import fr.egaetan.cgbench.ui.DockableTabbedPane;
 import fr.egaetan.cgbench.ui.LastBattlesPane;
 import fr.egaetan.cgbench.ui.LeaderBoardPane;
 import fr.egaetan.cgbench.ui.ObservableValue;
+import fr.egaetan.locm.DeckCoeffsBuilder;
+import fr.egaetan.locm.DeckReader;
 import fr.svivien.cgbenchmark.CGBenchmark;
 import fr.svivien.cgbenchmark.Constants;
 import fr.svivien.cgbenchmark.model.config.AccountConfiguration;
 import fr.svivien.cgbenchmark.model.config.GlobalConfiguration;
 import fr.svivien.cgbenchmark.model.request.play.PlayResponse;
+import fr.svivien.cgbenchmark.model.request.play.PlayResponse.Frame;
 import fr.svivien.cgbenchmark.model.test.TestInput;
 import okhttp3.OkHttpClient;
 import retrofit2.Call;
@@ -506,6 +509,7 @@ public class Gui {
 				JDialog diag = new JDialog(mainFrame, "Batch...", ModalityType.MODELESS);
 				diag.getContentPane().add(resultsTabs, BorderLayout.CENTER);
 				diag.pack();
+				diag.setPreferredSize(new Dimension(640, 480));
 				diag.addWindowListener(new WindowAdapter() {
 					@Override
 					public void windowClosed(WindowEvent e) {
@@ -513,38 +517,64 @@ public class Gui {
 				});
 				diag.setVisible(true);
 				
-				
-				CGBenchmark bench = new CGBenchmark(config, (t, r) -> {
-					int indexOfTab = resultsTabs.indexOfTab(t.getCodeName());
-					if (indexOfTab != -1) {
-						Gui.this.consumeMatch(t, r, lastBattles2.get(indexOfTab));	
+				while (DeckCoeffsBuilder.hasNext) {
+
+					if (DeckReader.liste.size() < 30) {
+						config.setRandomSeed(true);
 					}
 					else {
-						ObservableValue<List<Battle>> newLastBattles = new ObservableValue<>();
-						newLastBattles.setValue(new ArrayList<>());
-						lastBattles2.add(newLastBattles);
-						LastBattlesPane subLastBattlesPane = new LastBattlesPane(newLastBattles, userList, me$);
-						subLastBattlesPane.buildPane();
-						subLastBattlesPane.process();
-						ObservableValue<List<User>> userList$ = new ObservableValue<>();
-						userList$.setValue(Collections.emptyList());
-						newLastBattles.addPropertyChangeListener(e -> {
-							checku(newLastBattles, userList$);
-						});
-						
-						LeaderBoardPane subLeaderboard = new LeaderBoardPane(userList$, me$, confPane.ennemiesLink(), leaderboardActions(),  
-								newLastBattles);
-						subLeaderboard.buildPane();
-						JPanel tab = new JPanel(new FlowLayout());
-						tab.add(subLastBattlesPane.panel());
-						tab.add(subLeaderboard.panel());
-						resultsTabs.add(t.getCodeName(), tab);
-						Gui.this.consumeMatch(t, r, newLastBattles);	
+						config.setRandomSeed(false);
+						config.getSeedList().set(0, DeckCoeffsBuilder.nextString);
 					}
-				});
+
+					CGBenchmark bench = new CGBenchmark(config, (t, r) -> {
+						DeckReader.analyseDeck(t, r, config.getPlayerPosition() == 0);
+
+						int indexOfTab = resultsTabs.indexOfTab(t.getCodeName());
+						if (indexOfTab != -1) {
+							Gui.this.consumeMatch(t, r, lastBattles2.get(indexOfTab));	
+						}
+						else {
+							ObservableValue<List<Battle>> newLastBattles = new ObservableValue<>();
+							newLastBattles.setValue(new ArrayList<>());
+							lastBattles2.add(newLastBattles);
+							LastBattlesPane subLastBattlesPane = new LastBattlesPane(newLastBattles, userList, me$);
+							subLastBattlesPane.buildPane();
+							subLastBattlesPane.process();
+							ObservableValue<List<User>> userList$ = new ObservableValue<>();
+							userList$.setValue(Collections.emptyList());
+							newLastBattles.addPropertyChangeListener(e -> {
+								checku(newLastBattles, userList$);
+							});
+
+							LeaderBoardPane subLeaderboard = new LeaderBoardPane(userList$, me$, confPane.ennemiesLink(), leaderboardActions(),  
+									newLastBattles);
+							subLeaderboard.buildPane();
+							JPanel tab = new JPanel(new FlowLayout());
+							tab.add(subLastBattlesPane.panel());
+							tab.add(subLeaderboard.panel());
+							resultsTabs.add(t.getCodeName(), tab);
+							Gui.this.consumeMatch(t, r, newLastBattles);	
+						}
+					});
+
+					final Thread batchRunner = new Thread(() -> bench.launch(), "Batch-Run");
+					long start = System.currentTimeMillis();
+					batchRunner.start();
+
+					try {
+						batchRunner.join();
+						long now = System.currentTimeMillis();
+						Thread.sleep(30 * 1000 + start - now);
+					} catch (InterruptedException e1) {
+						e1.printStackTrace();
+					}
+					
+
+				}
 				
-				new Thread(() -> bench.launch(), "Batch-Run").start();
 			}
+
 
 		};
 		return runBatch;
@@ -553,7 +583,8 @@ public class Gui {
 	private void checku(ObservableValue<List<Battle>> newLastBattles, ObservableValue<List<User>> userList$) {
 		List<User> collect = userList.getValue().stream().filter(u -> newLastBattles.getValue().stream().anyMatch(b -> b.getPlayers().stream().anyMatch(
 				p -> (u.getCodingamer() != null 
-				&& p.getUserId() == u.getCodingamer().getUserId()) || (p.getPlayerAgentId() == u.getAgentId())))).collect(Collectors.toList());
+				&& p.getUserId() == u.getCodingamer().getUserId()) || (p.getPlayerAgentId() == u.getAgentId())
+				||(p.getNickname() != null && p.getNickname().equals(u.getPseudo()))))).collect(Collectors.toList());
 		userList$.setValue(collect);
 		userList$.fire();
 	}

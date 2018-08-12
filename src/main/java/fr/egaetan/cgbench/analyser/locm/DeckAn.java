@@ -41,14 +41,14 @@ public class DeckAn {
 			for (Draft d : read) {
 
 				if (d.winner == 0) {
-					/*nbDrafts++;
+					nbDrafts++;
 					for (Pick p : d.picks) {
 						cardsUsed[p.p0]++;
 						//cardsUsed[p.p1]--;
 						nbCards++;
 						manaCurve[cards.get(p.p0 - 1).cost]++;
-					}*/
-				} else {
+					}
+				} /*else {
 					nbDrafts++;
 					for (Pick p : d.picks) {
 						//cardsUsed[p.p0]--;
@@ -56,7 +56,7 @@ public class DeckAn {
 						nbCards++;
 						manaCurve[cards.get(p.p1 - 1).cost]++;
 					}
-				}
+				}*/
 			}
 		}
 

@@ -3,8 +3,8 @@ package fr.svivien.cgbenchmark.model.config;
 public class EnemyConfiguration {
     private Integer agentId;
     private String name;
-    private int picked = 0;
-    private Double weight;
+    private transient int picked = 0;
+    private transient Double weight;
 
     public EnemyConfiguration(Integer agentId, String name) {
         this.agentId = agentId;
