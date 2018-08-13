@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
@@ -99,7 +100,6 @@ import fr.svivien.cgbenchmark.Constants;
 import fr.svivien.cgbenchmark.model.config.AccountConfiguration;
 import fr.svivien.cgbenchmark.model.config.GlobalConfiguration;
 import fr.svivien.cgbenchmark.model.request.play.PlayResponse;
-import fr.svivien.cgbenchmark.model.request.play.PlayResponse.Frame;
 import fr.svivien.cgbenchmark.model.test.TestInput;
 import okhttp3.OkHttpClient;
 import retrofit2.Call;
@@ -517,10 +517,13 @@ public class Gui {
 				});
 				diag.setVisible(true);
 				
+				Random random = new Random();
 				while (DeckCoeffsBuilder.hasNext) {
 
-					if (DeckReader.liste.size() < 30) {
-						config.setRandomSeed(true);
+					if (DeckReader.liste.size() < 1200 || random.nextInt(3) < 1) {
+						//config.setRandomSeed(true);
+						config.setRandomSeed(false);
+						config.getSeedList().set(0, "seed=" + (random.nextInt(900_000_000) + 100_000_000));
 					}
 					else {
 						config.setRandomSeed(false);
@@ -565,7 +568,9 @@ public class Gui {
 					try {
 						batchRunner.join();
 						long now = System.currentTimeMillis();
-						Thread.sleep(30 * 1000 + start - now);
+						long millis = 30 * 1000 + start - now;
+						if (millis > 10)
+							Thread.sleep(millis);
 					} catch (InterruptedException e1) {
 						e1.printStackTrace();
 					}

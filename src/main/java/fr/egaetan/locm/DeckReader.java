@@ -1,21 +1,15 @@
 package fr.egaetan.locm;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonIOException;
-import com.google.gson.JsonSyntaxException;
-import com.google.gson.stream.JsonReader;
 
 import fr.svivien.cgbenchmark.model.request.play.PlayResponse;
 import fr.svivien.cgbenchmark.model.request.play.PlayResponse.Frame;
@@ -38,6 +32,14 @@ public class DeckReader {
 	}*/
 	
 	
+	static int[] values = new int[161];
+
+	static {
+		for (int i = 0; i < 161; i++) {
+			values[i] = -1;
+		}
+	}
+
 	static boolean analyse = false;
 	
 	public static void analyseDeck(TestInput t, PlayResponse r, boolean isMeFirst) {
@@ -101,7 +103,50 @@ public class DeckReader {
 			}
 			else if (frame.agentId == 1) {
 				String trim = frame.stdout.replace("PICK", "").trim();
-				int choice = Integer.parseInt(trim);
+
+				int choice = Integer.parseInt(trim.split(" ")[0]);
+				/*int v0 = Integer.parseInt(trim.split(" ")[1]);
+				int v1 = Integer.parseInt(trim.split(" ")[2]);
+				int v2 = Integer.parseInt(trim.split(" ")[3]);
+
+				if (values[a] != -1 && values[a] != v0) {
+					System.out.println();
+				}
+				if (values[b] != -1 && values[b] != v1) {
+					System.out.println();
+				}
+				if (values[c] != -1 && values[c] != v2) {
+					System.out.println();
+				}
+
+				values[a] = v0;
+				values[b] = v1;
+				values[c] = v2;
+
+				boolean finished = true;
+				for (int ai = 1; ai < 161; ai++) {
+					if (values[ai] == -1)
+						finished = false;
+				}
+
+				if (finished) {
+					StringBuilder v = new StringBuilder();
+					v.append("{ 0, ");
+					for (int ai = 1; ai <= 160; ai++) {
+						if (ai > 1) {
+							v.append(", ");
+						}
+						v.append(values[ai]);
+					}
+					v.append("};");
+					System.out.println(v.toString());
+
+					String collect = IntStream.range(1, 160 + 1).mapToObj(i$ -> Integer.valueOf(i$)).sorted(Comparator.comparing(i$ -> values[i$])).map(i$ -> Integer.toString(i$)).collect(Collectors.joining(", ", "", ""));
+					System.out.println(collect);
+
+					System.out.println();
+				}*/
+
 				OrderCarte o = new OrderCarte();
 				o.turn = i/2;
 				if (choice == 0) {

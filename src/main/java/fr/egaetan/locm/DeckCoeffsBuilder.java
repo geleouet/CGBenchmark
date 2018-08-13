@@ -5,10 +5,13 @@ import java.io.FileNotFoundException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonIOException;
@@ -25,7 +28,8 @@ public class DeckCoeffsBuilder {
 	//10 154 160, 110 153 160, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1, 1 1 1
 
 	//public static final String JSON = "./locm/carteOrdres_3510.json";
-	public static final String JSON = "./locm/closetAI/carteOrdres_3570.json";
+	public static final String JSON = "./locm/carteOrdres_1830.json";
+	//	public static final String JSON = "./locm/closetAI/carteOrdres_3570P2.json";
 	final static int coefffs[] = {0, 81, 69, 87, 81, 89, 89, 127, 83, 92, 62, 86, 78, 77, 54, 79, 66, 79, 93, 76, 58, 79, 60, 86, 60, 79, 85, 69, 91, 99, 70, 59, 97, 94, 71, 53, 68, 86, 75, 72, 68, 79, 52, 52, 88, 55, 47, 76, 122, 111, 99, 111, 102, 111, 97, 37, 70, 52, 56, 61, 46, 68, 61, 55, 99, 127, 106, 98, 124, 111, 79, 71, 74, 70, 57, 79, 50, 63, 36, 66, 90, 72, 83, 84, 113, 96, 89, 92, 91, 67, 64, 81, 30, 78, 70, 86, 87, 86, 77, 88, 72, 67, 61, 81, 75, 68, 70, 45, 52, 76, 13, 69, 59, 33, 64, 73, 114, 38, 59, 52, 54, 76, 62, 44, 43, 58, 60, 64, 58, 68, 54, 47, 48, 74, 63, 64, 47, 71, 35, 99, 4, 80, 52, 16, 85, 87, 68, 92, 94, 75, 85, 121, 83, -1009, -1009, -1009, -1009, -1009, -1009, -1009, -1009, -9999};
 	public static String nextString = "";
 	public static boolean hasNext = true;
@@ -36,6 +40,44 @@ public class DeckCoeffsBuilder {
 	
 	public static void main(String[] args) {
 		AllClassOrder read = read();
+		read.liste = read.liste.stream().filter(i -> !(i.best == 127 && (i.a == 41 || i.b == 41))).collect(Collectors.toList());
+		int idx = 127;
+
+		String collect23 = read.liste.stream().filter(i -> i.best == idx).map(o -> o.toString()).collect(Collectors.joining("\n"));
+		System.out.println(collect23);
+
+		System.out.println("--------");
+
+		String collect23b$ = read.liste.stream().filter(i -> i.best == idx)
+				.flatMap(o -> read.liste.stream().filter(i -> i.best == o.a || i.best == o.b))//.filter(i -> i.a == idx || i.b == idx)
+				.map(o -> o.toString()).collect(Collectors.joining("\n"));
+		System.out.println(collect23b$);
+		System.out.println("--------");
+
+		
+		
+		String collect23b = read.liste.stream().filter(i -> i.best == idx)
+				.flatMap(o -> read.liste.stream().filter(i -> i.best == o.a || i.best == o.b))
+				.flatMap(o -> read.liste.stream().filter(i -> i.best == o.a || i.best == o.b))
+				.flatMap(o -> read.liste.stream().filter(i -> i.best == o.a || i.best == o.b))
+				//.flatMap(o -> read.liste.stream().filter(i -> i.best == o.a || i.best == o.b))
+				.flatMap(o -> read.liste.stream().filter(i -> i.best == o.a || i.best == o.b))
+				.flatMap(i -> Stream.of(i.a, i.b))
+				.sorted()
+				.distinct()
+				.map(o -> o.toString()).collect(Collectors.joining("\n"));
+		System.out.println(collect23b);
+		
+		/*System.out.println("--------");
+		System.out.println(IntStream.range(1, 160 + 1).mapToObj(i -> Integer.valueOf(i)).max(Comparator.comparing(idx$ ->
+		read.liste.stream().filter(i -> i.best == idx$)
+		.flatMap(o -> read.liste.stream().filter(i -> i.best == o.a || i.best == o.b))
+		.flatMap(o -> read.liste.stream().filter(i -> i.best == o.a || i.best == o.b))
+		.flatMap(o -> read.liste.stream().filter(i -> i.best == o.a || i.best == o.b))
+		.flatMap(i -> Stream.of(i.a, i.b))
+		.sorted()
+		.distinct().count())));*/
+
 		analyse(read);
 	}
 
@@ -91,6 +133,7 @@ public class DeckCoeffsBuilder {
 				}
 				else {
 					System.out.println("Incompatibles");
+					hasNext = false;
 					break;
 				}
 			}
@@ -111,6 +154,9 @@ public class DeckCoeffsBuilder {
 		}
 		v.append("};");
 		System.out.println(v.toString());
+
+		String collect = IntStream.range(1, 160 + 1).mapToObj(i -> Integer.valueOf(i)).sorted(Comparator.comparing(i -> newCoeffs[i])).map(i -> Integer.toString(i)).collect(Collectors.joining(", ", "", ""));
+		System.out.println(collect);
 	}
 
 	private static StringBuilder prepareNextSeeds(int[] newCoeffs, int[] newCoeffsb) {

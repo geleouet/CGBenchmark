@@ -5,4 +5,9 @@ public class OrderCarte {
 	int best;
 	int a;
 	int b;
+
+	@Override
+	public String toString() {
+		return best + " > " + a + ", " + b;
+	}
 }
