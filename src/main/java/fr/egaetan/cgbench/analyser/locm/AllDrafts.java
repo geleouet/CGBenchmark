@@ -4,6 +4,6 @@ import java.util.List;
 
 public class AllDrafts {
 
-	List<Draft> drafts;
+	public List<Draft> drafts;
 
 }

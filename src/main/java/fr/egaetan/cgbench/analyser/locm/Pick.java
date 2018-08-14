@@ -1,6 +1,6 @@
 package fr.egaetan.cgbench.analyser.locm;
 
 public class Pick {
-	int p0;
-	int p1;
+	public int p0;
+	public int p1;
 }

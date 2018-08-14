@@ -1,4 +1,4 @@
-package fr.egaetan.cgbench.analyser.locm;
+package fr.egaetan.locm;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -9,7 +9,9 @@ import java.util.List;
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 
-import fr.egaetan.locm.Card;
+import fr.egaetan.cgbench.analyser.locm.AllDrafts;
+import fr.egaetan.cgbench.analyser.locm.Draft;
+import fr.egaetan.cgbench.analyser.locm.Pick;
 
 public class DeckAn {
 
