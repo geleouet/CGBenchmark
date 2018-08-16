@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
@@ -517,21 +518,21 @@ public class Gui {
 				});
 				diag.setVisible(true);
 				
-				Random random = new Random();
-				while (DeckCoeffsBuilder.hasNext) {
-
-					if (DeckReader.liste.size() < 1200 || random.nextInt(3) < 1) {
-						//config.setRandomSeed(true);
-						config.setRandomSeed(false);
-						config.getSeedList().set(0, "seed=" + (random.nextInt(900_000_000) + 100_000_000));
-					}
-					else {
-						config.setRandomSeed(false);
-						config.getSeedList().set(0, DeckCoeffsBuilder.nextString);
-					}
+//				Random random = new Random();
+//				while (DeckCoeffsBuilder.hasNext) {
+//
+//					if (DeckReader.liste.size() < 1200 || random.nextInt(3) < 1) {
+//						//config.setRandomSeed(true);
+//						config.setRandomSeed(false);
+//						config.getSeedList().set(0, "seed=" + (random.nextInt(900_000_000) + 100_000_000));
+//					}
+//					else {
+//						config.setRandomSeed(false);
+//						config.getSeedList().set(0, DeckCoeffsBuilder.nextString);
+//					}
 
 					CGBenchmark bench = new CGBenchmark(config, (t, r) -> {
-						DeckReader.analyseDeck(t, r, config.getPlayerPosition() == 0);
+						//DeckReader.analyseDeck(t, r, config.getPlayerPosition() == 0);
 
 						int indexOfTab = resultsTabs.indexOfTab(t.getCodeName());
 						if (indexOfTab != -1) {
@@ -562,21 +563,21 @@ public class Gui {
 					});
 
 					final Thread batchRunner = new Thread(() -> bench.launch(), "Batch-Run");
-					long start = System.currentTimeMillis();
+					//long start = System.currentTimeMillis();
 					batchRunner.start();
 
-					try {
-						batchRunner.join();
-						long now = System.currentTimeMillis();
-						long millis = 30 * 1000 + start - now;
-						if (millis > 10)
-							Thread.sleep(millis);
-					} catch (InterruptedException e1) {
-						e1.printStackTrace();
-					}
-					
-
-				}
+//					try {
+//						batchRunner.join();
+//						long now = System.currentTimeMillis();
+//						long millis = 20 * 1000 + start - now;
+//						if (millis > 10)
+//							Thread.sleep(millis);
+//					} catch (InterruptedException e1) {
+//						e1.printStackTrace();
+//					}
+//					
+//
+//				}
 				
 			}
 
@@ -636,7 +637,15 @@ public class Gui {
 			JsonReader reader = new JsonReader(new InputStreamReader(configFileInputStream, "UTF-8"));
 			return  gson.fromJson(reader, MultisConfig.class);
 		} catch (JsonIOException | JsonSyntaxException | FileNotFoundException | UnsupportedEncodingException e) {
-			e.printStackTrace();
+			try {
+				Gson gson = new Gson();
+				InputStream configFileInputStream = Gui.class.getResourceAsStream("/multis.json"); 
+				JsonReader reader = new JsonReader(new InputStreamReader(configFileInputStream, "UTF-8"));
+				return  gson.fromJson(reader, MultisConfig.class);
+			} catch (JsonIOException | JsonSyntaxException | UnsupportedEncodingException e1) {
+				e.printStackTrace();
+				e1.printStackTrace();
+			}
 		}	
 		return null;
 	}

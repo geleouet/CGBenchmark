@@ -359,6 +359,10 @@ public class LeaderBoardPane {
 			
 			@SuppressWarnings("serial")
 			@Override
+			public void mousePressed(MouseEvent e) {
+				mouseReleased(e);
+			}
+			@Override
 			public void mouseReleased(MouseEvent e) {
 				if (ennemiesLink != null && e.isPopupTrigger()) {
 					int row = board.convertRowIndexToModel(board.rowAtPoint(e.getPoint()));

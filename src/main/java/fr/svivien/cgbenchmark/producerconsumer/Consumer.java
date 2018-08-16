@@ -12,11 +12,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.google.gson.GsonBuilder;
+
+import fr.egaetan.cgbench.model.leaderboard.Game;
 import fr.svivien.cgbenchmark.Constants;
 import fr.svivien.cgbenchmark.api.CGPlayApi;
 import fr.svivien.cgbenchmark.model.request.play.PlayRequest;
 import fr.svivien.cgbenchmark.model.request.play.PlayResponse;
 import fr.svivien.cgbenchmark.model.request.play.PlayResponse.Frame;
+import fr.svivien.cgbenchmark.model.test.GamePlay;
 import fr.svivien.cgbenchmark.model.test.ResultWrapper;
 import fr.svivien.cgbenchmark.model.test.TestInput;
 import fr.svivien.cgbenchmark.model.test.TestOutput;
@@ -135,10 +139,29 @@ public class Consumer implements Runnable {
         PlayRequest request = new PlayRequest(test.getCode(), test.getLang(), ide, test.getSeed(), test.getPlayers());
         Call<PlayResponse> call = cgPlayApi.play(request, Constants.CG_HOST + "/ide/" + ide, cookie);
         try {
-            PlayResponse playResponse = call.execute().body();
-            listener.consume(test, playResponse);
-            TestOutput testOutput = new TestOutput(test, playResponse);
-			return testOutput;
+        	PlayResponse playResponse = call.execute().body();
+        	listener.consume(test, playResponse);
+
+
+        	if (playResponse != null && playResponse.success != null) {
+
+        		GamePlay game = new GamePlay();
+        		game.input = test;
+        		game.response = playResponse;
+
+        		String json = new GsonBuilder().create().toJson(game);
+        		File f = new File("./dump");
+        		if (!f.exists()) {
+        			f.mkdirs();
+        		}
+        		try (FileWriter fw = new FileWriter("./dump/play_" + playResponse.success.gameId + ".json")) {
+        			fw.write(json);
+        			fw.flush();
+        		}
+        	}
+
+        	TestOutput testOutput = new TestOutput(test, playResponse);
+        	return testOutput;
         } catch (IOException | RuntimeException e) {
         	e.printStackTrace();
             TestOutput to = new TestOutput(test, null);

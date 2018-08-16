@@ -1,10 +1,10 @@
-package fr.egaetan.locm;
+package fr.egaetan.locm.model;
 
 public class OrderCarte {
-	int turn;
-	int best;
-	int a;
-	int b;
+	public int turn;
+	public int best;
+	public int a;
+	public int b;
 
 	@Override
 	public String toString() {

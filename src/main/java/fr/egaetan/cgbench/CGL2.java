@@ -32,7 +32,7 @@ import fr.egaetan.cgbench.model.leaderboard.Tooltip;
 import fr.egaetan.cgbench.model.leaderboard.User;
 
 public class CGL2 {
-
+/*
 	final static String CHALLENGE = "getChallengeLeaderboard";
 	final static String MULTI = "getPuzzleLeaderboard";
 	final static String GAME_NAME = "mean-max";
@@ -171,6 +171,6 @@ public class CGL2 {
 		Scanner s = new Scanner(is).useDelimiter("\\A");) {
 			return s.hasNext() ? s.next() : "";
 		}
-	}
+	}*/
 
 }

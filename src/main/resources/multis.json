@@ -11,7 +11,7 @@
 			]
 		},
 		{
-			"name": "legends-of-code-and-magic-marathon",
+			"name": "legends-of-code-and-magic-marathonDeck",
 			"minOpponents": 1,
 			"maxOpponents": 1,
 			"seeds": [
@@ -24,7 +24,7 @@
 			]
 		},
 		{
-			"name": "legends-of-code-and-magic-marathon0",
+			"name": "legends-of-code-and-magic-marathonComp",
 			"minOpponents": 1,
 			"maxOpponents": 1,
 			"seeds": [
@@ -39,6 +39,16 @@
 				},
 				{
 					"name": "shufflePlayer1Seed"
+				}
+			]
+		},
+		{
+			"name": "legends-of-code-and-magic-marathon",
+			"minOpponents": 1,
+			"maxOpponents": 1,
+			"seeds": [
+				{
+					"name": "seed"
 				}
 			]
 		},

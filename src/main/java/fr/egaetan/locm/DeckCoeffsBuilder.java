@@ -18,6 +18,9 @@ import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 
+import fr.egaetan.locm.model.AllClassOrder;
+import fr.egaetan.locm.model.OrderCarte;
+
 /**
  * @author gaeta
  *

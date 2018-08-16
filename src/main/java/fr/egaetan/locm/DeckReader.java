@@ -11,6 +11,8 @@ import java.util.stream.IntStream;
 
 import com.google.gson.GsonBuilder;
 
+import fr.egaetan.locm.model.AllClassOrder;
+import fr.egaetan.locm.model.OrderCarte;
 import fr.svivien.cgbenchmark.model.request.play.PlayResponse;
 import fr.svivien.cgbenchmark.model.request.play.PlayResponse.Frame;
 import fr.svivien.cgbenchmark.model.test.TestInput;
